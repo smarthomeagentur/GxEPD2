@@ -67,6 +67,7 @@ public:
   void hibernate();                                         // turns powerOff() and sets controller to deep sleep for minimum power use, ONLY if wakeable by RST (rst >= 0)
   void setPaged();                                          // for GxEPD2_154c and GxEPD2_565c and GxEPD2_730c_GDEP073E01 paged workaround
   void drawNativeColors();
+  void enableQuickRefresh(int16_t refresh_stop_time, bool endable); // enable quick refresh, default 1000ms
 
 private:
   uint8_t _colorOfDemoBitmap(uint8_t from, int16_t mode = 0);
@@ -76,6 +77,8 @@ private:
   uint8_t _convert_to_native(uint8_t data); // uses different native colors
 private:
   bool _paged;
+  bool _epd_quick = false;
+  int16_t _epd_quick_stop_time = 1000;
 };
 
 #endif

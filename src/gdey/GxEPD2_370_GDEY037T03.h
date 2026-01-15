@@ -23,7 +23,7 @@ public:
   static const uint16_t WIDTH = 240;
   static const uint16_t WIDTH_VISIBLE = WIDTH;
   static const uint16_t HEIGHT = 416;
-  static const GxEPD2::Panel panel = GxEPD2::GDEY037T03;
+  // static const GxEPD2::Panel panel = GxEPD2::GDEY037T03;
   static const bool hasColor = false;
   static const bool hasPartialUpdate = true;
   static const bool usePartialUpdateWindow = true;  // set false for better image

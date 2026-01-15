@@ -18,6 +18,9 @@
 // color definitions for GxEPD, GxEPD2 and GxEPD_HD, values correspond to RGB565 values for TFTs
 #define GxEPD_BLACK 0x0000
 #define GxEPD_WHITE 0xFFFF
+#define GxEPD_BLACK_I 0x001F
+#define GxEPD_WHITE_I 0x0000
+#define GxEPD_RED_I 0xFC00
 // some controllers for b/w EPDs support grey levels
 #define GxEPD_DARKGREY 0x7BEF  // 128, 128, 128
 #define GxEPD_LIGHTGREY 0xC618 // 192, 192, 192
@@ -80,10 +83,8 @@ public:
     GDEY027T91,
     GDEQ031T10,
     ED037TC1,
-    GDEY037T03,
     GDEW0371W7,
     Waveshare_3_7_bw = GDEW0371W7,
-    GDEM0397T81,
     GDEW042T2,
     Waveshare_4_2_bw = GDEW042T2,
     GDEW042M01,

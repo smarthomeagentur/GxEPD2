@@ -481,6 +481,10 @@ public:
   {
     epd2.hibernate();
   }
+  void enableQuickRefresh(int16_t refresh_stop_time, bool endable = true)
+  {
+    epd2.enableQuickRefresh(refresh_stop_time, endable);
+  }
 
 private:
   template <typename T>

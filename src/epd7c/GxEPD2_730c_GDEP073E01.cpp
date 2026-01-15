@@ -551,12 +551,40 @@ void GxEPD2_730c_GDEP073E01::drawNative(const uint8_t *data1, const uint8_t *dat
   refresh(x, y, w, h);
 }
 
+void GxEPD2_730c_GDEP073E01::enableQuickRefresh(int16_t refresh_stop_time, bool enable)
+{
+  _epd_quick = enable;
+  _epd_quick_stop_time = refresh_stop_time;
+
+  if (!_epd_quick)
+  {
+    pinMode(_rst, OUTPUT); // just in case
+    digitalWrite(_rst, HIGH);
+    delay(50); // needs a little longer
+    digitalWrite(_rst, LOW);
+    delay(20);
+    digitalWrite(_rst, HIGH);
+    delay(10); // 4ms measured
+  }
+}
+
 void GxEPD2_730c_GDEP073E01::refresh(bool partial_update_mode)
 {
   _PowerOn();
   _writeCommand(0x12); // Display Refresh
   _writeData(0x00);
   delay(1);
+  if (_epd_quick)
+  {
+    delay(_epd_quick_stop_time); // Time until force stop refresh
+    pinMode(_rst, OUTPUT);       // just in case
+    digitalWrite(_rst, HIGH);
+    delay(50); // needs a little longer
+    digitalWrite(_rst, LOW);
+    delay(20);
+    digitalWrite(_rst, HIGH);
+    delay(10); // 4ms measured
+  }
   _waitWhileBusy("_refresh", full_refresh_time);
 }
 
@@ -650,6 +678,7 @@ void GxEPD2_730c_GDEP073E01::_InitDisplay()
 #define VDCS 0x82
 #define T_VDCS 0x84
 #define PWS 0xE3
+
   _writeCommand(0xAA); // CMDH
   _writeData(0x49);
   _writeData(0x55);
@@ -659,31 +688,25 @@ void GxEPD2_730c_GDEP073E01::_InitDisplay()
   _writeData(0x18);
   _writeCommand(PWRR); //
   _writeData(0x3F);
+  _writeData(0x00);
+  _writeData(0x32);
+  _writeData(0x2A);
+  _writeData(0x0E);
+  _writeData(0x2A);
+
   _writeCommand(PSR);
   _writeData(0x5F);
-  _writeData(0x69);
-  _writeCommand(POFS);
+
+  _writeCommand(0x13); // IPC
   _writeData(0x00);
-  _writeData(0x54);
-  _writeData(0x00);
-  _writeData(0x44);
-  _writeCommand(BTST1);
-  _writeData(0x40);
-  _writeData(0x1F);
-  _writeData(0x1F);
-  _writeData(0x2C);
-  _writeCommand(BTST2);
-  _writeData(0x6F);
-  _writeData(0x1F);
-  _writeData(0x17);
-  _writeData(0x49);
-  _writeCommand(BTST3);
-  _writeData(0x6F);
-  _writeData(0x1F);
-  _writeData(0x1F);
-  _writeData(0x22);
+  _writeData(0x04);
+
   _writeCommand(PLL);
-  _writeData(0x08);
+  _writeData(0x02);
+
+  _writeCommand(0x41); // TSE
+  _writeData(0x00);
+
   _writeCommand(CDI);
   _writeData(0x3F);
   _writeCommand(TCON);
@@ -694,14 +717,115 @@ void GxEPD2_730c_GDEP073E01::_InitDisplay()
   _writeData(0x20);
   _writeData(0x01);
   _writeData(0xE0);
+
+  _writeCommand(VDCS);
+  _writeData(0x1E);
+
   _writeCommand(T_VDCS);
   _writeData(0x01);
+
+  _writeCommand(0x86); // AGID
+  _writeData(0x00);
+
   _writeCommand(PWS);
   _writeData(0x2F);
+
+  _writeCommand(0xE0); // CCSET
+  _writeData(0x00);
+
+  _writeCommand(0xE6); // TSSET
+  _writeData(0x00);
+
   _PowerOn();
   _init_display_done = true;
 }
 
+/*
+void GxEPD2_730c_GDEP073E01::_InitDisplay() {
+   if ((_rst >= 0) && (_hibernating || _initial_write)) {
+      pinMode(_rst, OUTPUT);  // just in case
+      digitalWrite(_rst, HIGH);
+      delay(50);  // needs a little longer
+      digitalWrite(_rst, LOW);
+      delay(20);
+      digitalWrite(_rst, HIGH);
+      delay(10);                                            // 4ms measured
+      _waitWhileBusy("_InitDisplay reset", power_on_time);  // 4000us
+      _initial_write = false;                               // used for initial reset done
+      _hibernating = false;
+      _power_is_on = false;
+   }
+#define PSR 0x00
+#define PWRR 0x01
+#define POF 0x02
+#define POFS 0x03
+#define PON 0x04
+#define BTST1 0x05
+#define BTST2 0x06
+#define DSLP 0x07
+#define BTST3 0x08
+#define DTM 0x10
+#define DRF 0x12
+#define PLL 0x30
+#define CDI 0x50
+#define TCON 0x60
+#define TRES 0x61
+#define REV 0x70
+#define VDCS 0x82
+#define T_VDCS 0x84
+#define PWS 0xE3
+   _writeCommand(0xAA);  // CMDH
+   _writeData(0x49);
+   _writeData(0x55);
+   _writeData(0x20);
+   _writeData(0x08);
+   _writeData(0x09);
+   _writeData(0x18);
+   _writeCommand(PWRR);  //
+   _writeData(0x3F);
+   _writeCommand(PSR);
+   _writeData(0x5F);
+   _writeData(0x69);
+   _writeCommand(POFS);
+   _writeData(0x00);
+   _writeData(0x54);
+   _writeData(0x00);
+   _writeData(0x44);
+   _writeCommand(BTST1);
+   _writeData(0x40);
+   _writeData(0x1F);
+   _writeData(0x1F);
+   _writeData(0x2C);
+   _writeCommand(BTST2);
+   _writeData(0x6F);
+   _writeData(0x1F);
+   _writeData(0x17);
+   _writeData(0x49);
+   _writeCommand(BTST3);
+   _writeData(0x6F);
+   _writeData(0x1F);
+   _writeData(0x1F);
+   _writeData(0x22);
+   _writeCommand(PLL);
+   _writeData(0x08);
+   _writeCommand(CDI);
+   _writeData(0x3F);
+   _writeCommand(TCON);
+   _writeData(0x02);
+   _writeData(0x00);
+   _writeCommand(TRES);
+   _writeData(0x03);
+   _writeData(0x20);
+   _writeData(0x01);
+   _writeData(0xE0);
+   _writeCommand(T_VDCS);
+   _writeData(0x01);
+   _writeCommand(PWS);
+   _writeData(0x2F);
+   _PowerOn();
+   _init_display_done = true;
+}
+*/
 uint8_t GxEPD2_730c_GDEP073E01::_colorOfDemoBitmap(uint8_t from, int16_t mode)
 {
   switch (mode)
