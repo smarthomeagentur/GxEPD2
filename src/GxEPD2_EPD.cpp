@@ -18,9 +18,13 @@
 #endif
 
 GxEPD2_EPD::GxEPD2_EPD(int16_t cs, int16_t dc, int16_t rst, int16_t busy, int16_t busy_level, uint32_t busy_timeout,
+                       uint16_t w, uint16_t h, GxEPD2::Panel p, bool c, bool pu, bool fpu) : 
+  GxEPD2_EPD(cs, 0, dc, rst, busy, busy_level, busy_timeout, w, h, p, c, pu, fpu) {}
+
+GxEPD2_EPD::GxEPD2_EPD(int16_t cs_master, int16_t cs_slave, int16_t dc, int16_t rst, int16_t busy, int16_t busy_level, uint32_t busy_timeout,
                        uint16_t w, uint16_t h, GxEPD2::Panel p, bool c, bool pu, bool fpu) :
   WIDTH(w), HEIGHT(h), panel(p), hasColor(c), hasPartialUpdate(pu), hasFastPartialUpdate(fpu),
-  _cs(cs), _dc(dc), _rst(rst), _busy(busy), _busy_level(busy_level), _busy_timeout(busy_timeout), _diag_enabled(false),
+  _cs(cs_master), _cs_slave(cs_slave), _dc(dc), _rst(rst), _busy(busy), _busy_level(busy_level), _busy_timeout(busy_timeout), _diag_enabled(false),
   _pSPIx(&SPI), _spi_settings(4000000, MSBFIRST, SPI_MODE0)
 {
   _initial_write = true;
@@ -59,6 +63,11 @@ void GxEPD2_EPD::init(uint32_t serial_diag_bitrate, bool initial, uint16_t reset
     digitalWrite(_cs, HIGH); // preset (less glitch for any analyzer)
     pinMode(_cs, OUTPUT);
     digitalWrite(_cs, HIGH); // set (needed e.g. for RP2040)
+  }
+  if (_cs_slave >= 0) {
+    digitalWrite(_cs_slave, HIGH);
+    pinMode(_cs_slave, OUTPUT);
+    digitalWrite(_cs_slave, HIGH);
   }
   _reset();
   _pSPIx->begin(); // may steal _rst pin (Waveshare Pico-ePaper-2.9)
@@ -172,42 +181,42 @@ void GxEPD2_EPD::_waitWhileBusy(const char* comment, uint16_t busy_time)
   else delay(busy_time);
 }
 
-void GxEPD2_EPD::_writeCommand(uint8_t c)
+void GxEPD2_EPD::_writeCommand(uint8_t c, CsType cs_type)
 {
   _pSPIx->beginTransaction(_spi_settings);
   if (_dc >= 0) digitalWrite(_dc, LOW);
-  if (_cs >= 0) digitalWrite(_cs, LOW);
+  _set_cs(cs_type, LOW);
   _pSPIx->transfer(c);
-  if (_cs >= 0) digitalWrite(_cs, HIGH);
+  _set_cs(cs_type, HIGH);
   if (_dc >= 0) digitalWrite(_dc, HIGH);
   _pSPIx->endTransaction();
 }
 
-void GxEPD2_EPD::_writeData(uint8_t d)
+void GxEPD2_EPD::_writeData(uint8_t d, CsType cs_type)
 {
   _pSPIx->beginTransaction(_spi_settings);
-  if (_cs >= 0) digitalWrite(_cs, LOW);
+  _set_cs(cs_type, LOW);
   _pSPIx->transfer(d);
-  if (_cs >= 0) digitalWrite(_cs, HIGH);
+  _set_cs(cs_type, HIGH);
   _pSPIx->endTransaction();
 }
 
-void GxEPD2_EPD::_writeData(const uint8_t* data, uint16_t n)
+void GxEPD2_EPD::_writeData(const uint8_t* data, uint16_t n, CsType cs_type)
 {
   _pSPIx->beginTransaction(_spi_settings);
-  if (_cs >= 0) digitalWrite(_cs, LOW);
+  _set_cs(cs_type, LOW);
   for (uint16_t i = 0; i < n; i++)
   {
     _pSPIx->transfer(*data++);
   }
-  if (_cs >= 0) digitalWrite(_cs, HIGH);
+  _set_cs(cs_type, HIGH);
   _pSPIx->endTransaction();
 }
 
-void GxEPD2_EPD::_writeDataPGM(const uint8_t* data, uint16_t n, int16_t fill_with_zeroes)
+void GxEPD2_EPD::_writeDataPGM(const uint8_t* data, uint16_t n, int16_t fill_with_zeroes, CsType cs_type)
 {
   _pSPIx->beginTransaction(_spi_settings);
-  if (_cs >= 0) digitalWrite(_cs, LOW);
+  _set_cs(cs_type, LOW);
   for (uint16_t i = 0; i < n; i++)
   {
     _pSPIx->transfer(pgm_read_byte(&*data++));
@@ -217,63 +226,63 @@ void GxEPD2_EPD::_writeDataPGM(const uint8_t* data, uint16_t n, int16_t fill_wit
     _pSPIx->transfer(0x00);
     fill_with_zeroes--;
   }
-  if (_cs >= 0) digitalWrite(_cs, HIGH);
+  _set_cs(cs_type, HIGH);
   _pSPIx->endTransaction();
 }
 
-void GxEPD2_EPD::_writeDataPGM_sCS(const uint8_t* data, uint16_t n, int16_t fill_with_zeroes)
+void GxEPD2_EPD::_writeDataPGM_sCS(const uint8_t* data, uint16_t n, int16_t fill_with_zeroes, CsType cs_type)
 {
   _pSPIx->beginTransaction(_spi_settings);
   for (uint8_t i = 0; i < n; i++)
   {
-    if (_cs >= 0) digitalWrite(_cs, LOW);
+    _set_cs(cs_type, LOW);
     _pSPIx->transfer(pgm_read_byte(&*data++));
-    if (_cs >= 0) digitalWrite(_cs, HIGH);
+    _set_cs(cs_type, HIGH);
   }
   while (fill_with_zeroes > 0)
   {
-    if (_cs >= 0) digitalWrite(_cs, LOW);
+    _set_cs(cs_type, LOW);
     _pSPIx->transfer(0x00);
     fill_with_zeroes--;
-    if (_cs >= 0) digitalWrite(_cs, HIGH);
+    _set_cs(cs_type, HIGH);
   }
   _pSPIx->endTransaction();
 }
 
-void GxEPD2_EPD::_writeCommandData(const uint8_t* pCommandData, uint8_t datalen)
+void GxEPD2_EPD::_writeCommandData(const uint8_t* pCommandData, uint8_t datalen, CsType cs_type)
 {
   _pSPIx->beginTransaction(_spi_settings);
   if (_dc >= 0) digitalWrite(_dc, LOW);
-  if (_cs >= 0) digitalWrite(_cs, LOW);
+  _set_cs(cs_type, LOW);
   _pSPIx->transfer(*pCommandData++);
   if (_dc >= 0) digitalWrite(_dc, HIGH);
   for (uint8_t i = 0; i < datalen - 1; i++)  // sub the command
   {
     _pSPIx->transfer(*pCommandData++);
   }
-  if (_cs >= 0) digitalWrite(_cs, HIGH);
+  _set_cs(cs_type, HIGH);
   _pSPIx->endTransaction();
 }
 
-void GxEPD2_EPD::_writeCommandDataPGM(const uint8_t* pCommandData, uint8_t datalen)
+void GxEPD2_EPD::_writeCommandDataPGM(const uint8_t* pCommandData, uint8_t datalen, CsType cs_type)
 {
   _pSPIx->beginTransaction(_spi_settings);
   if (_dc >= 0) digitalWrite(_dc, LOW);
-  if (_cs >= 0) digitalWrite(_cs, LOW);
+  _set_cs(cs_type, LOW);
   _pSPIx->transfer(pgm_read_byte(&*pCommandData++));
   if (_dc >= 0) digitalWrite(_dc, HIGH);
   for (uint8_t i = 0; i < datalen - 1; i++)  // sub the command
   {
     _pSPIx->transfer(pgm_read_byte(&*pCommandData++));
   }
-  if (_cs >= 0) digitalWrite(_cs, HIGH);
+  _set_cs(cs_type, HIGH);
   _pSPIx->endTransaction();
 }
 
-void GxEPD2_EPD::_startTransfer()
+void GxEPD2_EPD::_startTransfer(CsType cs_type)
 {
   _pSPIx->beginTransaction(_spi_settings);
-  if (_cs >= 0) digitalWrite(_cs, LOW);
+  _set_cs(cs_type, LOW);
 }
 
 void GxEPD2_EPD::_transfer(uint8_t value)
@@ -281,8 +290,14 @@ void GxEPD2_EPD::_transfer(uint8_t value)
   _pSPIx->transfer(value);
 }
 
-void GxEPD2_EPD::_endTransfer()
+void GxEPD2_EPD::_endTransfer(CsType cs_type)
 {
-  if (_cs >= 0) digitalWrite(_cs, HIGH);
+  _set_cs(cs_type, HIGH);
   _pSPIx->endTransaction();
+}
+
+inline void GxEPD2_EPD::_set_cs(const CsType cs_type, const uint8_t level)
+{
+  if (cs_type & CsType::MASTER == CsType::MASTER && _cs >= 0) digitalWrite(_cs, level);
+  if (cs_type & CsType::SLAVE == CsType::SLAVE && _cs_slave >= 0) digitalWrite(_cs_slave, level);
 }

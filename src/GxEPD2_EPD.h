@@ -16,6 +16,7 @@
 #include <SPI.h>
 
 #include <GxEPD2.h>
+#include <cs.h>
 
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 //#pragma GCC diagnostic ignored "-Wsign-compare"
@@ -32,6 +33,8 @@ class GxEPD2_EPD
     const bool hasFastPartialUpdate;
     // constructor
     GxEPD2_EPD(int16_t cs, int16_t dc, int16_t rst, int16_t busy, int16_t busy_level, uint32_t busy_timeout,
+               uint16_t w, uint16_t h, GxEPD2::Panel p, bool c, bool pu, bool fpu);
+    GxEPD2_EPD(int16_t cs_master, int16_t cs_slave, int16_t dc, int16_t rst, int16_t busy, int16_t busy_level, uint32_t busy_timeout,
                uint16_t w, uint16_t h, GxEPD2::Panel p, bool c, bool pu, bool fpu);
     virtual void init(uint32_t serial_diag_bitrate = 0); // serial_diag_bitrate = 0 : disabled
     virtual void init(uint32_t serial_diag_bitrate, bool initial, uint16_t reset_duration = 10, bool pulldown_rst_mode = false);
@@ -103,18 +106,20 @@ class GxEPD2_EPD
   protected:
     void _reset();
     void _waitWhileBusy(const char* comment = 0, uint16_t busy_time = 5000);
-    void _writeCommand(uint8_t c);
-    void _writeData(uint8_t d);
-    void _writeData(const uint8_t* data, uint16_t n);
-    void _writeDataPGM(const uint8_t* data, uint16_t n, int16_t fill_with_zeroes = 0);
-    void _writeDataPGM_sCS(const uint8_t* data, uint16_t n, int16_t fill_with_zeroes = 0);
-    void _writeCommandData(const uint8_t* pCommandData, uint8_t datalen);
-    void _writeCommandDataPGM(const uint8_t* pCommandData, uint8_t datalen);
-    void _startTransfer();
+    void _writeCommand(uint8_t c, const CsType cs_type = CsType::MASTER);
+    void _writeData(uint8_t d, const CsType cs_type = CsType::MASTER);
+    void _writeData(const uint8_t* data, uint16_t n, const CsType cs_type = CsType::MASTER);
+    void _writeDataPGM(const uint8_t* data, uint16_t n, int16_t fill_with_zeroes = 0, const CsType cs_type = CsType::MASTER);
+    void _writeDataPGM_sCS(const uint8_t* data, uint16_t n, int16_t fill_with_zeroes = 0, const CsType cs_type = CsType::MASTER);
+    void _writeCommandData(const uint8_t* pCommandData, uint8_t datalen, const CsType cs_type = CsType::MASTER);
+    void _writeCommandDataPGM(const uint8_t* pCommandData, uint8_t datalen, const CsType cs_type = CsType::MASTER);
+    void _startTransfer(const CsType cs_type = CsType::MASTER);
     void _transfer(uint8_t value);
-    void _endTransfer();
+    void _endTransfer(const CsType cs_type = CsType::MASTER);
+    void _setCs(const CsType cs_type = CsType::MASTER);
+    inline void _set_cs(const CsType cs_type, uint8_t level);
   protected:
-    int16_t _cs, _dc, _rst, _busy, _busy_level;
+    int16_t _cs, _cs_slave, _dc, _rst, _busy, _busy_level;
     uint32_t _busy_timeout;
     bool _diag_enabled, _pulldown_rst_mode;
     SPIClass* _pSPIx;
