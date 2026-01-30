@@ -703,7 +703,7 @@ void GxEPD2_730c_GDEY073D46::writeDemoBitmap(const uint8_t* data1, const uint8_t
               uint32_t idx = mirror_y ? (j - x) + uint32_t((h - 1 - (i - y))) * w : (j - x) + uint32_t(i - y) * w;
               if (pgm)
               {
-#if defined(__AVR) || defined(ESP8266) || defined(ESP32)
+#if defined(__AVR) || defined(ESP82esp3266) || defined(ESP32)
                 data = _colorOfDemoBitmap(pgm_read_byte(&data1[idx++])) << 4;
                 data |= _colorOfDemoBitmap(pgm_read_byte(&data1[idx]));
 #else
