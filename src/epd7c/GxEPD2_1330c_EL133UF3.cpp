@@ -109,10 +109,14 @@ void GxEPD2_1330c_EL133UF3::drawDemoBitmap(const uint8_t *data1, const uint8_t *
 
 void GxEPD2_1330c_EL133UF3::refresh(bool partial_update_mode)
 {
+  _powerOn();
+  _drf(CsType::MASTER_SLAVE);
+  _waitWhileBusy("refresh", full_refresh_time);
 }
 
 void GxEPD2_1330c_EL133UF3::refresh(int16_t x, int16_t y, int16_t w, int16_t h)
 {
+  refresh();
 }
 
 void GxEPD2_1330c_EL133UF3::powerOff()
