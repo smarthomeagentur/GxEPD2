@@ -51,8 +51,6 @@ void GxEPD2_1330c_EL133UF3::writeScreenBuffer(uint8_t black_value, uint8_t color
     }
   }
   _endTransfer(CsType::SLAVE);
-
-  _TurnOn();
 }
 
 void GxEPD2_1330c_EL133UF3::writeImage(const uint8_t bitmap[], int16_t x, int16_t y, int16_t w, int16_t h, bool invert, bool mirror_y, bool pgm)
