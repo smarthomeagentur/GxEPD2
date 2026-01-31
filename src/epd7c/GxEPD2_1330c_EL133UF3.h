@@ -15,7 +15,7 @@
 #define _GxEPD2_1330c_EL133UF3_H_
 #define EPD_13IN3E_WIDTH        1200
 #define EPD_13IN3E_HEIGHT       1600    
-
+#define RESET_DURATION          30
 
 #define EPD_13IN3E_BLACK        0x0
 #define EPD_13IN3E_WHITE        0x1
@@ -129,6 +129,8 @@ class GxEPD2_1330c_EL133UF3 : public GxEPD2_EPD
     static const uint16_t partial_refresh_time = 40000; // ms, e.g. 38858000us
     // constructor
     GxEPD2_1330c_EL133UF3(int16_t cs, int16_t cs_slave, int16_t dc, int16_t rst, int16_t busy);
+    void init(uint32_t serial_diag_bitrate = 0); // serial_diag_bitrate = 0 : disabled
+    void init(uint32_t serial_diag_bitrate, bool initial, uint16_t reset_duration = 10, bool pulldown_rst_mode = false);
     // methods (virtual)
     //  Support for Bitmaps (Sprites) to Controller Buffer and to Screen
     void clearScreen(uint8_t value = 0xFF); // init controller memory and screen (default white)
@@ -164,7 +166,6 @@ class GxEPD2_1330c_EL133UF3 : public GxEPD2_EPD
     void setPaged(); // for GxEPD2_154c and GxEPD2_565c and GxEPD2_730c_GDEY073D46 paged workaround
   private:
     uint8_t _colorOfDemoBitmap(uint8_t from);
-    void _TurnOn();
     void _powerOn();
     void _InitDisplay();
     void _writeEN133UF3Cmd(uint8_t cmd, const uint8_t *data, uint8_t data_len, CsType cs_type = CsType::MASTER);
@@ -187,6 +188,7 @@ class GxEPD2_1330c_EL133UF3 : public GxEPD2_EPD
     void _boost_vddp_en(CsType cs_type = CsType::MASTER);
     void _buck_boost_vddn(CsType cs_type = CsType::MASTER);
     void _tft_vcom_power(CsType cs_type = CsType::MASTER);
+    void _writeColor(uint8_t color_value, CsType cs_type = CsType::MASTER);
   private:
     bool _paged;
 };

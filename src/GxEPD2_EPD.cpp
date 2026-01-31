@@ -298,6 +298,6 @@ void GxEPD2_EPD::_endTransfer(CsType cs_type)
 
 inline void GxEPD2_EPD::_set_cs(const CsType cs_type, const uint8_t level)
 {
-  if (cs_type & CsType::MASTER == CsType::MASTER && _cs >= 0) digitalWrite(_cs, level);
-  if (cs_type & CsType::SLAVE == CsType::SLAVE && _cs_slave >= 0) digitalWrite(_cs_slave, level);
+  if ((cs_type & CsType::MASTER) == CsType::MASTER && _cs >= 0) digitalWrite(_cs, level);
+  if ((cs_type & CsType::SLAVE) == CsType::SLAVE && _cs_slave >= 0) digitalWrite(_cs_slave, level);
 }
