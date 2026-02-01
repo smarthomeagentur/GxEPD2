@@ -48,6 +48,7 @@
 
 
 #include "../GxEPD2_EPD.h"
+#include "cs.h"
 
 class GxEPD2_1330c_EL133UF3 : public GxEPD2_EPD
 {
@@ -130,7 +131,7 @@ class GxEPD2_1330c_EL133UF3 : public GxEPD2_EPD
     // constructor
     GxEPD2_1330c_EL133UF3(int16_t cs, int16_t cs_slave, int16_t dc, int16_t rst, int16_t busy);
     void init(uint32_t serial_diag_bitrate = 0); // serial_diag_bitrate = 0 : disabled
-    void init(uint32_t serial_diag_bitrate, bool initial, uint16_t reset_duration = 10, bool pulldown_rst_mode = false);
+    void init(uint32_t serial_diag_bitrate, bool initial, uint16_t reset_duration = 30, bool pulldown_rst_mode = false);
     // methods (virtual)
     //  Support for Bitmaps (Sprites) to Controller Buffer and to Screen
     void clearScreen(uint8_t value = 0xFF); // init controller memory and screen (default white)
@@ -168,29 +169,32 @@ class GxEPD2_1330c_EL133UF3 : public GxEPD2_EPD
     uint8_t _colorOfDemoBitmap(uint8_t from);
     void _powerOn();
     void _InitDisplay();
-    void _writeEN133UF3Cmd(uint8_t cmd, const uint8_t *data, uint8_t data_len, CsType cs_type = CsType::MASTER);
-    void _psr(CsType cs_type = CsType::MASTER);
-    void _pwr(CsType cs_type = CsType::MASTER);
-    void _pof(CsType cs_type = CsType::MASTER);
-    void _pon(CsType cs_type = CsType::MASTER);
-    void _drf(CsType cs_type = CsType::MASTER);
-    void _cdi(CsType cs_type = CsType::MASTER);
-    void _tcon(CsType cs_type = CsType::MASTER);
-    void _tres(CsType cs_type = CsType::MASTER);
-    void _cmd66(CsType cs_type = CsType::MASTER);
-    void _en_buf(CsType cs_type = CsType::MASTER);
-    void _ccset(CsType cs_type = CsType::MASTER);
-    void _pws(CsType cs_type = CsType::MASTER);
-    void _an_tm(CsType cs_type = CsType::MASTER);
-    void _agid(CsType cs_type = CsType::MASTER);
-    void _btst_p(CsType cs_type = CsType::MASTER);
-    void _btst_n(CsType cs_type = CsType::MASTER);
-    void _boost_vddp_en(CsType cs_type = CsType::MASTER);
-    void _buck_boost_vddn(CsType cs_type = CsType::MASTER);
-    void _tft_vcom_power(CsType cs_type = CsType::MASTER);
+    void _writeEN133UF3DataCmd(uint8_t cmd, const uint8_t *data, uint8_t data_len, CsType cs_type = CsType::MASTER);
+    void _writeEN133UF3Cmd(uint8_t cmd, CsType cs_type = CsType::MASTER);
+    inline void _psr(CsType cs_type = CsType::MASTER);
+    inline void _pwr(CsType cs_type = CsType::MASTER);
+    inline void _pof(CsType cs_type = CsType::MASTER);
+    inline void _pon(CsType cs_type = CsType::MASTER);
+    inline void _drf(CsType cs_type = CsType::MASTER);
+    inline void _cdi(CsType cs_type = CsType::MASTER);
+    inline void _tcon(CsType cs_type = CsType::MASTER);
+    inline void _tres(CsType cs_type = CsType::MASTER);
+    inline void _cmd66(CsType cs_type = CsType::MASTER);
+    inline void _en_buf(CsType cs_type = CsType::MASTER);
+    inline void _ccset(CsType cs_type = CsType::MASTER);
+    inline void _pws(CsType cs_type = CsType::MASTER);
+    inline void _an_tm(CsType cs_type = CsType::MASTER);
+    inline void _agid(CsType cs_type = CsType::MASTER);
+    inline void _btst_p(CsType cs_type = CsType::MASTER);
+    inline void _btst_n(CsType cs_type = CsType::MASTER);
+    inline void _boost_vddp_en(CsType cs_type = CsType::MASTER);
+    inline void _buck_boost_vddn(CsType cs_type = CsType::MASTER);
+    inline void _tft_vcom_power(CsType cs_type = CsType::MASTER);
+    inline void _set_cs(const CsType cs_type, uint8_t level);
     void _writeColor(uint8_t color_value, CsType cs_type = CsType::MASTER);
   private:
     bool _paged;
+    uint8_t _cs_slave;
 };
 
 #endif

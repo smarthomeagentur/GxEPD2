@@ -1,9 +1,10 @@
 #include "GxEPD2_1330c_EL133UF3.h"
 
-GxEPD2_1330c_EL133UF3::GxEPD2_1330c_EL133UF3(int16_t cs, int16_t cs_slave, int16_t dc, int16_t rst, int16_t busy) : GxEPD2_EPD(cs, cs_slave, dc, rst, busy, LOW, 60000000, WIDTH, HEIGHT, panel, hasColor, hasPartialUpdate, hasFastPartialUpdate)
+GxEPD2_1330c_EL133UF3::GxEPD2_1330c_EL133UF3(int16_t cs, int16_t cs_slave, int16_t dc, int16_t rst, int16_t busy) : GxEPD2_EPD(cs, dc, rst, busy, LOW, 60000000, WIDTH, HEIGHT, panel, hasColor, hasPartialUpdate, hasFastPartialUpdate)
 {
   _paged = false; //?
   _reset_duration = 30;
+  _cs_slave = cs_slave;
 }
 
 void GxEPD2_1330c_EL133UF3::init(uint32_t serial_diag_bitrate)
@@ -179,131 +180,141 @@ void GxEPD2_1330c_EL133UF3::powerOff()
 void GxEPD2_1330c_EL133UF3::hibernate()
 {
   powerOff();
-  _writeEN133UF3Cmd(SLEEP, SLEEP_V, sizeof(SLEEP_V), CsType::MASTER_SLAVE);
+  _writeEN133UF3DataCmd(SLEEP, SLEEP_V, sizeof(SLEEP_V), CsType::MASTER_SLAVE);
 }
 
 void GxEPD2_1330c_EL133UF3::setPaged()
 {
 }
 
-void GxEPD2_1330c_EL133UF3::_writeEN133UF3Cmd(uint8_t cmd, const uint8_t *data, const uint8_t data_len, CsType cs_type)
+void GxEPD2_1330c_EL133UF3::_writeEN133UF3DataCmd(uint8_t cmd, const uint8_t *data, const uint8_t data_len, CsType cs_type)
 {
-  _startTransfer(cs_type);
-  _transfer(cmd);
-  for (uint8_t i = 0; i < data_len; i++)
-  {
-    _transfer(data[i]);
-  }
-  _endTransfer(cs_type);
+  _pSPIx->beginTransaction(_spi_settings);
+  _set_cs(cs_type, LOW);
+  _pSPIx->transfer(cmd);
+  _pSPIx->transferBytes(data, NULL, data_len);
+  _set_cs(cs_type, HIGH);
+  _pSPIx->endTransaction();
 }
 
-void GxEPD2_1330c_EL133UF3::_psr(CsType cs_type)
+void GxEPD2_1330c_EL133UF3::_writeEN133UF3Cmd(uint8_t cmd, CsType cs_type)
 {
-  _writeEN133UF3Cmd(PSR, PSR_V, sizeof(PSR_V), cs_type);
+  _pSPIx->beginTransaction(_spi_settings);
+  _set_cs(cs_type, LOW);
+  _pSPIx->transfer(cmd);
+  _set_cs(cs_type, HIGH);
+  _pSPIx->endTransaction();
 }
 
-void GxEPD2_1330c_EL133UF3::_pwr(CsType cs_type)
+inline void GxEPD2_1330c_EL133UF3::_psr(CsType cs_type)
 {
-  _writeEN133UF3Cmd(PWR_epd, PWR_V, sizeof(PWR_V), cs_type);
+  _writeEN133UF3DataCmd(PSR, PSR_V, sizeof(PSR_V), cs_type);
 }
 
-void GxEPD2_1330c_EL133UF3::_pof(CsType cs_type)
+inline void GxEPD2_1330c_EL133UF3::_pwr(CsType cs_type)
 {
-  _writeEN133UF3Cmd(POF, POF_V, sizeof(POF_V), cs_type);
+  _writeEN133UF3DataCmd(PWR_epd, PWR_V, sizeof(PWR_V), cs_type);
 }
 
-void GxEPD2_1330c_EL133UF3::_pon(CsType cs_type)
+inline void GxEPD2_1330c_EL133UF3::_pof(CsType cs_type)
 {
-  _writeCommand(PON, cs_type);
+  _writeEN133UF3DataCmd(POF, POF_V, sizeof(POF_V), cs_type);
 }
 
-void GxEPD2_1330c_EL133UF3::_drf(CsType cs_type)
+inline void GxEPD2_1330c_EL133UF3::_pon(CsType cs_type)
 {
-  _writeEN133UF3Cmd(DRF, DRF_V, sizeof(DRF_V), cs_type);
+  _writeEN133UF3Cmd(PON, cs_type);
 }
 
-void GxEPD2_1330c_EL133UF3::_cdi(CsType cs_type)
+inline void GxEPD2_1330c_EL133UF3::_drf(CsType cs_type)
 {
-  _writeEN133UF3Cmd(CDI, CDI_V, sizeof(CDI_V), cs_type);
+  _writeEN133UF3DataCmd(DRF, DRF_V, sizeof(DRF_V), cs_type);
 }
 
-void GxEPD2_1330c_EL133UF3::_tcon(CsType cs_type)
+inline void GxEPD2_1330c_EL133UF3::_cdi(CsType cs_type)
 {
-  _writeEN133UF3Cmd(TCON, TCON_V, sizeof(TCON_V), cs_type);
+  _writeEN133UF3DataCmd(CDI, CDI_V, sizeof(CDI_V), cs_type);
 }
 
-void GxEPD2_1330c_EL133UF3::_tres(CsType cs_type)
+inline void GxEPD2_1330c_EL133UF3::_tcon(CsType cs_type)
 {
-  _writeEN133UF3Cmd(TRES, TRES_V, sizeof(TRES_V), cs_type);
+  _writeEN133UF3DataCmd(TCON, TCON_V, sizeof(TCON_V), cs_type);
 }
 
-void GxEPD2_1330c_EL133UF3::_cmd66(CsType cs_type)
+inline void GxEPD2_1330c_EL133UF3::_tres(CsType cs_type)
 {
-  _writeEN133UF3Cmd(CMD66, CMD66_V, sizeof(CMD66_V), cs_type);
+  _writeEN133UF3DataCmd(TRES, TRES_V, sizeof(TRES_V), cs_type);
 }
 
-void GxEPD2_1330c_EL133UF3::_en_buf(CsType cs_type)
+inline void GxEPD2_1330c_EL133UF3::_cmd66(CsType cs_type)
 {
-  _writeEN133UF3Cmd(EN_BUF, EN_BUF_V, sizeof(EN_BUF_V), cs_type);
+  _writeEN133UF3DataCmd(CMD66, CMD66_V, sizeof(CMD66_V), cs_type);
 }
 
-void GxEPD2_1330c_EL133UF3::_ccset(CsType cs_type)
+inline void GxEPD2_1330c_EL133UF3::_en_buf(CsType cs_type)
 {
-  _writeEN133UF3Cmd(CCSET, CCSET_V, sizeof(CCSET_V), cs_type);
+  _writeEN133UF3DataCmd(EN_BUF, EN_BUF_V, sizeof(EN_BUF_V), cs_type);
 }
 
-void GxEPD2_1330c_EL133UF3::_pws(CsType cs_type)
+inline void GxEPD2_1330c_EL133UF3::_ccset(CsType cs_type)
 {
-  _writeEN133UF3Cmd(PWS, PWS_V, sizeof(PWS_V), cs_type);
+  _writeEN133UF3DataCmd(CCSET, CCSET_V, sizeof(CCSET_V), cs_type);
 }
 
-void GxEPD2_1330c_EL133UF3::_an_tm(CsType cs_type)
+inline void GxEPD2_1330c_EL133UF3::_pws(CsType cs_type)
 {
-  _writeEN133UF3Cmd(AN_TM, AN_TM_V, sizeof(AN_TM_V), cs_type);
+  _writeEN133UF3DataCmd(PWS, PWS_V, sizeof(PWS_V), cs_type);
 }
 
-void GxEPD2_1330c_EL133UF3::_agid(CsType cs_type)
+inline void GxEPD2_1330c_EL133UF3::_an_tm(CsType cs_type)
 {
-  _writeEN133UF3Cmd(AGID, AGID_V, sizeof(AGID_V), cs_type);
+  _writeEN133UF3DataCmd(AN_TM, AN_TM_V, sizeof(AN_TM_V), cs_type);
 }
 
-void GxEPD2_1330c_EL133UF3::_btst_p(CsType cs_type)
+inline void GxEPD2_1330c_EL133UF3::_agid(CsType cs_type)
 {
-  _writeEN133UF3Cmd(BTST_P, BTST_P_V, sizeof(BTST_P_V), cs_type);
+  _writeEN133UF3DataCmd(AGID, AGID_V, sizeof(AGID_V), cs_type);
 }
 
-void GxEPD2_1330c_EL133UF3::_btst_n(CsType cs_type)
+inline void GxEPD2_1330c_EL133UF3::_btst_p(CsType cs_type)
 {
-  _writeEN133UF3Cmd(BTST_N, BTST_N_V, sizeof(BTST_N_V), cs_type);
+  _writeEN133UF3DataCmd(BTST_P, BTST_P_V, sizeof(BTST_P_V), cs_type);
 }
 
-void GxEPD2_1330c_EL133UF3::_boost_vddp_en(CsType cs_type)
+inline void GxEPD2_1330c_EL133UF3::_btst_n(CsType cs_type)
 {
-  _writeEN133UF3Cmd(BOOST_VDDP_EN, BOOST_VDDP_EN_V, sizeof(BOOST_VDDP_EN_V), cs_type);
+  _writeEN133UF3DataCmd(BTST_N, BTST_N_V, sizeof(BTST_N_V), cs_type);
 }
 
-void GxEPD2_1330c_EL133UF3::_buck_boost_vddn(CsType cs_type)
+inline void GxEPD2_1330c_EL133UF3::_boost_vddp_en(CsType cs_type)
 {
-  _writeEN133UF3Cmd(BUCK_BOOST_VDDN, BUCK_BOOST_VDDN_V, sizeof(BUCK_BOOST_VDDN_V), cs_type);
+  _writeEN133UF3DataCmd(BOOST_VDDP_EN, BOOST_VDDP_EN_V, sizeof(BOOST_VDDP_EN_V), cs_type);
 }
 
-void GxEPD2_1330c_EL133UF3::_tft_vcom_power(CsType cs_type)
+inline void GxEPD2_1330c_EL133UF3::_buck_boost_vddn(CsType cs_type)
 {
-  _writeEN133UF3Cmd(TFT_VCOM_POWER, TFT_VCOM_POWER_V, sizeof(TFT_VCOM_POWER_V), cs_type);
+  _writeEN133UF3DataCmd(BUCK_BOOST_VDDN, BUCK_BOOST_VDDN_V, sizeof(BUCK_BOOST_VDDN_V), cs_type);
+}
+
+inline void GxEPD2_1330c_EL133UF3::_tft_vcom_power(CsType cs_type)
+{
+  _writeEN133UF3DataCmd(TFT_VCOM_POWER, TFT_VCOM_POWER_V, sizeof(TFT_VCOM_POWER_V), cs_type);
 }
 
 void GxEPD2_1330c_EL133UF3::_writeColor(uint8_t color_value, CsType cs_type)
 {
-  _startTransfer(cs_type);
-  _transfer(DRF);
+  _pSPIx->beginTransaction(_spi_settings);
+  _set_cs(cs_type, LOW);
+  _pSPIx->transfer(DRF);  
   for (uint16_t y = 0; y < HEIGHT; y++)
   {
     for (uint16_t x = 0; x < HALF_WIDTH / 2; x++)
     {
-      _transfer(color_value);
+      _pSPIx->transfer(color_value);
     }
   }
-  _endTransfer(cs_type);
+  _set_cs(cs_type, LOW);
+  _pSPIx->endTransaction();
 }
 
 void GxEPD2_1330c_EL133UF3::_InitDisplay()
@@ -338,4 +349,10 @@ void GxEPD2_1330c_EL133UF3::_powerOn()
     _waitWhileBusy();
   }
   _power_is_on = true;
+}
+
+inline void GxEPD2_1330c_EL133UF3::_set_cs(const CsType cs_type, const uint8_t level)
+{
+  if ((cs_type & CsType::MASTER) == CsType::MASTER && _cs >= 0) digitalWrite(_cs, level);
+  if ((cs_type & CsType::SLAVE) == CsType::SLAVE && _cs_slave >= 0) digitalWrite(_cs_slave, level);
 }
