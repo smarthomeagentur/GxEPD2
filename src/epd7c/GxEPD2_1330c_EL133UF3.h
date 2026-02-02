@@ -17,13 +17,6 @@
 #define EPD_13IN3E_HEIGHT 1600
 #define RESET_DURATION 30
 
-#define EPD_13IN3E_BLACK 0x0
-#define EPD_13IN3E_WHITE 0x1
-#define EPD_13IN3E_YELLOW 0x2
-#define EPD_13IN3E_RED 0x3
-#define EPD_13IN3E_BLUE 0x5
-#define EPD_13IN3E_GREEN 0x6
-
 #define PSR 0x00
 #define PWR_epd 0x01
 #define POF 0x02
@@ -172,6 +165,7 @@ class GxEPD2_1330c_EL133UF3 : public GxEPD2_EPD
   inline void _tft_vcom_power(CsType cs_type = CsType::MASTER);
   inline void _set_cs(const CsType cs_type, uint8_t level);
   void _writeColor(uint8_t color_value, CsType cs_type = CsType::MASTER);
+  uint8_t _remap_byte(uint8_t byte); //change the color values to match EL133UF3 requirements
 
   private:
   bool _paged;

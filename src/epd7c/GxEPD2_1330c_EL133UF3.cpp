@@ -130,6 +130,7 @@ void GxEPD2_1330c_EL133UF3::writeImage(const uint8_t bitmap[], int16_t x, int16_
         for (int16_t col_byte = 0; col_byte < bytes_per_line_half; col_byte++)
         {
           uint8_t val = pgm ? pgm_read_byte(&val_ptr[col_byte]) : val_ptr[col_byte];
+          val = _remap_byte(val);
           if (invert)
             val = ~val;
           _pSPIx->transfer(val);
@@ -158,6 +159,7 @@ void GxEPD2_1330c_EL133UF3::writeImage(const uint8_t bitmap[], int16_t x, int16_
         {
           uint8_t val =
               pgm ? pgm_read_byte(&val_ptr[bytes_per_line_half + col_byte]) : val_ptr[bytes_per_line_half + col_byte];
+          val = _remap_byte(val);
           if (invert)
             val = ~val;
           _pSPIx->transfer(val);
@@ -196,19 +198,13 @@ void GxEPD2_1330c_EL133UF3::writeImage(const uint8_t bitmap[], int16_t x, int16_
         for (int16_t byte_idx = 0; byte_idx < 300; byte_idx++)
         {
           // This byte corresponds to pixels (byte_idx*2) and (byte_idx*2 + 1) in Master column.
-          int16_t pixel_x_base = byte_idx * 2;
-          // Check if this pixel location is inside the update window (x,y,w,h)
-          // Since we write 2 pixels at once, checks are roughly per byte.
-          // If (pixel_x_base >= x) && (pixel_x_base < x+w) && (i >= y) && (i < y+h)
-
-          // Simplified check: assume bytes.
-          // Master handles x_global 0..599.
-
-          uint8_t data = 0xFF; // Clean/White
-
-          // Where is this data in the bitmap?
-          // Global X for this byte is byte_idx*2.
           int16_t global_x = byte_idx * 2;
+
+          uint8_t data = 0xFF; // Clean/White (Standard GxEPD2 0x11 is white, so 0xFF is invalid/clean? No, 0x11 is White-White)
+          // Wait, if GxEPD2 standard is 1=White, then White-White is 0x11.
+          // 0xFF (15) is undefined. But if we use default logic, better initialize to mapped White.
+          // Standard White is 1. Remapped White is 1. So 0x11.
+          data = 0x11;
 
           if ((global_x >= x) && (global_x < x + w) && (i >= y) && (i < y + h))
           {
@@ -224,9 +220,17 @@ void GxEPD2_1330c_EL133UF3::writeImage(const uint8_t bitmap[], int16_t x, int16_
             else
               data = bitmap[idx];
 
+            data = _remap_byte(data); // Remap BEFORE invert
+
             if (invert)
               data = ~data;
           }
+          else
+          {
+            // If outside window, we should send "Clean" value.
+            // If we send 0x11 (White), and remap it -> 0x11. Correct.
+          }
+
           _pSPIx->transfer(data);
         }
     }
@@ -245,7 +249,7 @@ void GxEPD2_1330c_EL133UF3::writeImage(const uint8_t bitmap[], int16_t x, int16_
         int16_t pixel_x_base = 600 + byte_idx * 2; // Slave starts at 600
         int16_t global_x = pixel_x_base;
 
-        uint8_t data = 0xFF; // Clean/White
+        uint8_t data = 0x11; // Clean/White
 
         if ((global_x >= x) && (global_x < x + w) && (i >= y) && (i < y + h))
         {
@@ -258,6 +262,9 @@ void GxEPD2_1330c_EL133UF3::writeImage(const uint8_t bitmap[], int16_t x, int16_
             data = pgm_read_byte(&bitmap[idx]);
           else
             data = bitmap[idx];
+
+          data = _remap_byte(data);
+
           if (invert)
             data = ~data;
         }
@@ -505,6 +512,7 @@ inline void GxEPD2_1330c_EL133UF3::_tft_vcom_power(CsType cs_type)
 
 void GxEPD2_1330c_EL133UF3::_writeColor(uint8_t color_value, CsType cs_type)
 {
+  uint8_t remapped = _remap_byte(color_value);
   _pSPIx->beginTransaction(_spi_settings);
   _set_cs(cs_type, LOW);
   _pSPIx->transfer(DTM);
@@ -512,11 +520,42 @@ void GxEPD2_1330c_EL133UF3::_writeColor(uint8_t color_value, CsType cs_type)
   {
     for (uint16_t x = 0; x < HALF_WIDTH / 2; x++)
     {
-      _pSPIx->transfer(color_value);
+      _pSPIx->transfer(remapped);
     }
   }
   _set_cs(cs_type, HIGH);
   _pSPIx->endTransaction();
+}
+
+uint8_t GxEPD2_1330c_EL133UF3::_remap_byte(uint8_t byte)
+{
+  // Mapping:
+  // Standard GxEPD2 | EL133UF3
+  // 0 Black         | 0 Black
+  // 1 White         | 1 White
+  // 2 Green         | 6 Green
+  // 3 Blue          | 5 Blue
+  // 4 Red           | 3 Red
+  // 5 Yellow        | 2 Yellow
+  // 6 Orange        | 4 Orange
+  // 7 (Clean/User)  | 7 (Clean?)
+
+  static const uint8_t lut[16] = {
+      0x0, // 0 -> 0
+      0x1, // 1 -> 1
+      0x6, // 2 -> 6
+      0x5, // 3 -> 5
+      0x3, // 4 -> 3
+      0x2, // 5 -> 2
+      0x4, // 6 -> 4
+      0x7, // 7 -> 7 ?
+      // If > 7 (garbage or unused bits from GxEPD2 buffer packing issues?)
+      // Map identity?
+      0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF};
+
+  uint8_t h = (byte >> 4) & 0x0F;
+  uint8_t l = byte & 0x0F;
+  return (lut[h] << 4) | lut[l];
 }
 
 void GxEPD2_1330c_EL133UF3::_InitDisplay()
