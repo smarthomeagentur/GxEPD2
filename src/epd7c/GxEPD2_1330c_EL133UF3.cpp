@@ -69,6 +69,11 @@ void GxEPD2_1330c_EL133UF3::init(uint32_t serial_diag_bitrate, bool initial, uin
   }
 }
 
+void GxEPD2_1330c_EL133UF3::enableQuickRefresh(int16_t refresh_stop_time, bool enable)
+{
+  //TODO: needs to be implemented
+}
+
 void GxEPD2_1330c_EL133UF3::clearScreen(uint8_t value)
 {
   writeScreenBuffer(value);

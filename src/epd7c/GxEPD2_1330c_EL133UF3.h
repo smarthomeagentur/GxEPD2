@@ -105,6 +105,7 @@ class GxEPD2_1330c_EL133UF3 : public GxEPD2_EPD
   GxEPD2_1330c_EL133UF3(int16_t cs, int16_t cs_slave, int16_t dc, int16_t rst, int16_t busy);
   void init(uint32_t serial_diag_bitrate = 0); // serial_diag_bitrate = 0 : disabled
   void init(uint32_t serial_diag_bitrate, bool initial, uint16_t reset_duration = 30, bool pulldown_rst_mode = false);
+  void enableQuickRefresh(int16_t refresh_stop_time, bool endable); // enable quick refresh, default 1000ms
   // methods (virtual)
   //  Support for Bitmaps (Sprites) to Controller Buffer and to Screen
   void clearScreen(uint8_t value = 0xFF);                           // init controller memory and screen (default white)
