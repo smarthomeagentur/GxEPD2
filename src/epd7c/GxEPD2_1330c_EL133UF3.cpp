@@ -97,8 +97,8 @@ void GxEPD2_1330c_EL133UF3::writeScreenBuffer(uint8_t color_set, uint8_t color_v
 
   // _powerOn(); // REMOVED: Power On should happen in refresh(), after data is written.
 
-  _writeColor(color, CsType::MASTER);
-  _writeColor(color, CsType::SLAVE);
+  _writeColor(color, CsType::CS_MASTER);
+  _writeColor(color, CsType::CS_SLAVE);
 
   _waitWhileBusy();
 }
@@ -120,7 +120,7 @@ void GxEPD2_1330c_EL133UF3::writeImage(const uint8_t bitmap[], int16_t x, int16_
       _pSPIx->beginTransaction(_spi_settings);
       if (y == 0)
       {
-        _set_cs(CsType::MASTER, LOW);
+        _set_cs(CsType::CS_MASTER, LOW);
         _pSPIx->transfer(DTM);
       }
 
@@ -138,7 +138,7 @@ void GxEPD2_1330c_EL133UF3::writeImage(const uint8_t bitmap[], int16_t x, int16_
       }
       if (y + h == HEIGHT)
       {
-        _set_cs(CsType::MASTER, HIGH);
+        _set_cs(CsType::CS_MASTER, HIGH);
         _paged = false;
       }
       _pSPIx->endTransaction();
@@ -148,7 +148,7 @@ void GxEPD2_1330c_EL133UF3::writeImage(const uint8_t bitmap[], int16_t x, int16_
       _pSPIx->beginTransaction(_spi_settings);
       if (y == 0)
       {
-        _set_cs(CsType::SLAVE, LOW);
+        _set_cs(CsType::CS_SLAVE, LOW);
         _pSPIx->transfer(DTM);
       }
 
@@ -167,7 +167,7 @@ void GxEPD2_1330c_EL133UF3::writeImage(const uint8_t bitmap[], int16_t x, int16_
       }
       if (y + h == HEIGHT)
       {
-        _set_cs(CsType::SLAVE, HIGH);
+        _set_cs(CsType::CS_SLAVE, HIGH);
         _paged = false;
       }
       _pSPIx->endTransaction();
@@ -186,7 +186,7 @@ void GxEPD2_1330c_EL133UF3::writeImage(const uint8_t bitmap[], int16_t x, int16_
 
     // Master
     _pSPIx->beginTransaction(_spi_settings);
-    _set_cs(CsType::MASTER, LOW);
+    _set_cs(CsType::CS_MASTER, LOW);
     _pSPIx->transfer(DTM);
 
     for (int16_t i = 0; i < int16_t(HEIGHT); i++)
@@ -234,12 +234,12 @@ void GxEPD2_1330c_EL133UF3::writeImage(const uint8_t bitmap[], int16_t x, int16_
           _pSPIx->transfer(data);
         }
     }
-    _set_cs(CsType::MASTER, HIGH);
+    _set_cs(CsType::CS_MASTER, HIGH);
     _pSPIx->endTransaction();
 
     // Slave
     _pSPIx->beginTransaction(_spi_settings);
-    _set_cs(CsType::SLAVE, LOW);
+    _set_cs(CsType::CS_SLAVE, LOW);
     _pSPIx->transfer(DTM);
 
     for (int16_t i = 0; i < int16_t(HEIGHT); i++)
@@ -271,7 +271,7 @@ void GxEPD2_1330c_EL133UF3::writeImage(const uint8_t bitmap[], int16_t x, int16_
         _pSPIx->transfer(data);
       }
     }
-    _set_cs(CsType::SLAVE, HIGH);
+    _set_cs(CsType::CS_SLAVE, HIGH);
     _pSPIx->endTransaction();
   }
 }
@@ -362,7 +362,7 @@ void GxEPD2_1330c_EL133UF3::refresh(bool partial_update_mode)
   _powerOn();
   _waitWhileBusy(); // for the love of god, please do not remove this
   delay(30);
-  _drf(CsType::MASTER_SLAVE);
+  _drf(CsType::CS_MASTER_SLAVE);
   _waitWhileBusy("refresh", full_refresh_time);
   _paging_step = 0;
 }
@@ -377,7 +377,7 @@ void GxEPD2_1330c_EL133UF3::powerOff()
   if (_paging_step == 1)
     return;
   Serial.println("[DISP] Power Off");
-  _pof(CsType::MASTER_SLAVE);
+  _pof(CsType::CS_MASTER_SLAVE);
   _waitWhileBusy("powerOff", power_off_time);
   _power_is_on = false;
 }
@@ -385,7 +385,7 @@ void GxEPD2_1330c_EL133UF3::powerOff()
 void GxEPD2_1330c_EL133UF3::hibernate()
 {
   powerOff();
-  _writeEN133UF3DataCmd(SLEEP, SLEEP_V, sizeof(SLEEP_V), CsType::MASTER_SLAVE);
+  _writeEN133UF3DataCmd(SLEEP, SLEEP_V, sizeof(SLEEP_V), CsType::CS_MASTER_SLAVE);
 }
 
 void GxEPD2_1330c_EL133UF3::setPaged()
@@ -565,23 +565,23 @@ void GxEPD2_1330c_EL133UF3::_InitDisplay()
 
   _waitWhileBusy("initReset", power_off_time);
 
-  _an_tm(CsType::MASTER);
-  _cmd66(CsType::MASTER_SLAVE);
-  _psr(CsType::MASTER_SLAVE);
-  _cdi(CsType::MASTER_SLAVE);
-  _tcon(CsType::MASTER_SLAVE);
-  _agid(CsType::MASTER_SLAVE);
-  _pws(CsType::MASTER_SLAVE);
-  _ccset(CsType::MASTER_SLAVE);
-  _tres(CsType::MASTER_SLAVE);
+  _an_tm(CsType::CS_MASTER);
+  _cmd66(CsType::CS_MASTER_SLAVE);
+  _psr(CsType::CS_MASTER_SLAVE);
+  _cdi(CsType::CS_MASTER_SLAVE);
+  _tcon(CsType::CS_MASTER_SLAVE);
+  _agid(CsType::CS_MASTER_SLAVE);
+  _pws(CsType::CS_MASTER_SLAVE);
+  _ccset(CsType::CS_MASTER_SLAVE);
+  _tres(CsType::CS_MASTER_SLAVE);
 
-  _pwr(CsType::MASTER);
-  _en_buf(CsType::MASTER);
-  _btst_p(CsType::MASTER);
-  _boost_vddp_en(CsType::MASTER);
-  _btst_n(CsType::MASTER);
-  _buck_boost_vddn(CsType::MASTER);
-  _tft_vcom_power(CsType::MASTER);
+  _pwr(CsType::CS_MASTER);
+  _en_buf(CsType::CS_MASTER);
+  _btst_p(CsType::CS_MASTER);
+  _boost_vddp_en(CsType::CS_MASTER);
+  _btst_n(CsType::CS_MASTER);
+  _buck_boost_vddn(CsType::CS_MASTER);
+  _tft_vcom_power(CsType::CS_MASTER);
 
   _init_display_done = true;
 }
@@ -590,7 +590,7 @@ void GxEPD2_1330c_EL133UF3::_powerOn()
 {
   if (!_power_is_on)
   {
-    _pon(CsType::MASTER_SLAVE);
+    _pon(CsType::CS_MASTER_SLAVE);
     _waitWhileBusy("powerOn");
   }
   _power_is_on = true;
@@ -598,6 +598,6 @@ void GxEPD2_1330c_EL133UF3::_powerOn()
 
 inline void GxEPD2_1330c_EL133UF3::_set_cs(const CsType cs_type, const uint8_t level)
 {
-  if ((cs_type & CsType::MASTER) == CsType::MASTER && _cs >= 0) digitalWrite(_cs, level);
-  if ((cs_type & CsType::SLAVE) == CsType::SLAVE && _cs_slave >= 0) digitalWrite(_cs_slave, level);
+  if ((cs_type & CsType::CS_MASTER) == CsType::CS_MASTER && _cs >= 0) digitalWrite(_cs, level);
+  if ((cs_type & CsType::CS_SLAVE) == CsType::CS_SLAVE && _cs_slave >= 0) digitalWrite(_cs_slave, level);
 }
