@@ -172,6 +172,8 @@ class GxEPD2_1330c_EL133UF3 : public GxEPD2_EPD {
    bool _paged;
    uint8_t _cs_slave;
    uint8_t _paging_step;  // 0=Init, 1=Master, 2=Slave
+   bool _epd_quick = false;
+   int16_t _epd_quick_stop_time = 1000;
 };
 
 #endif

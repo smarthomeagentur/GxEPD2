@@ -59,6 +59,18 @@ void GxEPD2_1330c_EL133UF3::init(uint32_t serial_diag_bitrate, bool initial, uin
 
 void GxEPD2_1330c_EL133UF3::enableQuickRefresh(int16_t refresh_stop_time, bool enable) {
    // TODO: needs to be implemented
+   _epd_quick = enable;
+   _epd_quick_stop_time = refresh_stop_time;
+
+   if (!_epd_quick) {
+      pinMode(_rst, OUTPUT);  // just in case
+      digitalWrite(_rst, HIGH);
+      delay(50);  // needs a little longer
+      digitalWrite(_rst, LOW);
+      delay(20);
+      digitalWrite(_rst, HIGH);
+      delay(10);  // 4ms measured
+   }
 }
 
 void GxEPD2_1330c_EL133UF3::clearScreen(uint8_t value) {
@@ -391,6 +403,17 @@ void GxEPD2_1330c_EL133UF3::refresh(bool partial_update_mode) {
    _waitWhileBusy();  // for the love of god, please do not remove this
    delay(30);
    _drf(CsType::CS_MASTER_SLAVE);
+   delay(1);
+   if (_epd_quick) {
+      delay(_epd_quick_stop_time);  // Time until force stop refresh
+      pinMode(_rst, OUTPUT);        // just in case
+      digitalWrite(_rst, HIGH);
+      delay(50);  // needs a little longer
+      digitalWrite(_rst, LOW);
+      delay(20);
+      digitalWrite(_rst, HIGH);
+      delay(10);  // 4ms measured
+   }
    _waitWhileBusy("refresh", full_refresh_time);
    _paging_step = 0;
 }
