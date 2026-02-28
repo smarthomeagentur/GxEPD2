@@ -42,9 +42,8 @@
 #include "../GxEPD2_EPD.h"
 #include "cs.h"
 
-class GxEPD2_1330c_EL133UF3 : public GxEPD2_EPD
-{
-  private:
+class GxEPD2_1330c_EL133UF3 : public GxEPD2_EPD {
+ private:
   // const uint8_t spiCsPin[2] = {
   // 		SPI_CS0, SPI_CS1
   // };
@@ -87,7 +86,7 @@ class GxEPD2_1330c_EL133UF3 : public GxEPD2_EPD
   const uint8_t SLEEP_V[1] = {
       0xA5};
 
-  public:
+ public:
   // attributes
   static const uint16_t WIDTH = EPD_13IN3E_WIDTH;
   static const uint16_t WIDTH_VISIBLE = WIDTH;
@@ -97,21 +96,21 @@ class GxEPD2_1330c_EL133UF3 : public GxEPD2_EPD
   static const bool hasColor = true;
   static const bool hasPartialUpdate = false;
   static const bool hasFastPartialUpdate = false;
-  static const uint16_t power_on_time = 200;          // ms, e.g. 172000us
-  static const uint16_t power_off_time = 150;         // ms, e.g. 145000us
-  static const uint16_t full_refresh_time = 40000;    // ms, e.g. 38858000us
-  static const uint16_t partial_refresh_time = 40000; // ms, e.g. 38858000us
+  static const uint16_t power_on_time = 200;           // ms, e.g. 172000us
+  static const uint16_t power_off_time = 150;          // ms, e.g. 145000us
+  static const uint16_t full_refresh_time = 40000;     // ms, e.g. 38858000us
+  static const uint16_t partial_refresh_time = 40000;  // ms, e.g. 38858000us
   // constructor
   GxEPD2_1330c_EL133UF3(int16_t cs, int16_t cs_slave, int16_t dc, int16_t rst, int16_t busy);
-  void init(uint32_t serial_diag_bitrate = 0); // serial_diag_bitrate = 0 : disabled
+  void init(uint32_t serial_diag_bitrate = 0);  // serial_diag_bitrate = 0 : disabled
   void init(uint32_t serial_diag_bitrate, bool initial, uint16_t reset_duration = 30, bool pulldown_rst_mode = false);
-  void enableQuickRefresh(int16_t refresh_stop_time, bool endable); // enable quick refresh, default 1000ms
+  void enableQuickRefresh(int16_t refresh_stop_time, bool endable);  // enable quick refresh, default 1000ms
   // methods (virtual)
   //  Support for Bitmaps (Sprites) to Controller Buffer and to Screen
-  void clearScreen(uint8_t value = 0xFF);                           // init controller memory and screen (default white)
-  void clearScreen(uint8_t black_value, uint8_t color_value);       // init controller memory and screen
-  void writeScreenBuffer(uint8_t value = 0xFF);                     // init controller memory (default white)
-  void writeScreenBuffer(uint8_t black_value, uint8_t color_value); // init controller memory
+  void clearScreen(uint8_t value = 0xFF);                            // init controller memory and screen (default white)
+  void clearScreen(uint8_t black_value, uint8_t color_value);        // init controller memory and screen
+  void writeScreenBuffer(uint8_t value = 0xFF);                      // init controller memory (default white)
+  void writeScreenBuffer(uint8_t black_value, uint8_t color_value);  // init controller memory
   // write to controller memory, without screen refresh; x and w should be multiple of 8
   void writeImage(const uint8_t bitmap[], int16_t x, int16_t y, int16_t w, int16_t h, bool invert = false, bool mirror_y = false, bool pgm = false);
   void writeImagePart(const uint8_t bitmap[], int16_t x_part, int16_t y_part, int16_t w_bitmap, int16_t h_bitmap,
@@ -119,6 +118,7 @@ class GxEPD2_1330c_EL133UF3 : public GxEPD2_EPD
   void writeImage(const uint8_t* black, const uint8_t* color, int16_t x, int16_t y, int16_t w, int16_t h, bool invert = false, bool mirror_y = false, bool pgm = false);
   void writeImagePart(const uint8_t* black, const uint8_t* color, int16_t x_part, int16_t y_part, int16_t w_bitmap, int16_t h_bitmap,
                       int16_t x, int16_t y, int16_t w, int16_t h, bool invert = false, bool mirror_y = false, bool pgm = false);
+  void writeImageFromPSRAM(const uint8_t* buffer, int16_t x, int16_t y, int16_t w, int16_t h, uint8_t rotation = 0);
   // write sprite of native data to controller memory, without screen refresh; x and w should be multiple of 8
   void writeNative(const uint8_t* data1, const uint8_t* data2, int16_t x, int16_t y, int16_t w, int16_t h, bool invert = false, bool mirror_y = false, bool pgm = false);
   void writeNativePart(const uint8_t* data1, const uint8_t* data2, int16_t x_part, int16_t y_part, int16_t w_bitmap, int16_t h_bitmap,
@@ -134,12 +134,12 @@ class GxEPD2_1330c_EL133UF3 : public GxEPD2_EPD
   void drawNative(const uint8_t* data1, const uint8_t* data2, int16_t x, int16_t y, int16_t w, int16_t h, bool invert = false, bool mirror_y = false, bool pgm = false);
   void writeDemoBitmap(const uint8_t* data1, const uint8_t* data2, int16_t x, int16_t y, int16_t w, int16_t h, int16_t mode = 0, bool mirror_y = false, bool pgm = false);
   void drawDemoBitmap(const uint8_t* data1, const uint8_t* data2, int16_t x, int16_t y, int16_t w, int16_t h, int16_t mode = 0, bool mirror_y = false, bool pgm = false);
-  void refresh(bool partial_update_mode = false);           // screen refresh from controller memory to full screen
-  void refresh(int16_t x, int16_t y, int16_t w, int16_t h); // screen refresh from controller memory, partial screen
-  void powerOff();                                          // turns off generation of panel driving voltages, avoids screen fading over time
-  void hibernate();                                         // turns powerOff() and sets controller to deep sleep for minimum power use, ONLY if wakeable by RST (rst >= 0)
-  void setPaged();                                          // for GxEPD2_154c and GxEPD2_565c and GxEPD2_730c_GDEY073D46 paged workaround
-  private:
+  void refresh(bool partial_update_mode = false);            // screen refresh from controller memory to full screen
+  void refresh(int16_t x, int16_t y, int16_t w, int16_t h);  // screen refresh from controller memory, partial screen
+  void powerOff();                                           // turns off generation of panel driving voltages, avoids screen fading over time
+  void hibernate();                                          // turns powerOff() and sets controller to deep sleep for minimum power use, ONLY if wakeable by RST (rst >= 0)
+  void setPaged();                                           // for GxEPD2_154c and GxEPD2_565c and GxEPD2_730c_GDEY073D46 paged workaround
+ private:
   uint8_t _colorOfDemoBitmap(uint8_t from);
   void _powerOn();
   void _InitDisplay();
@@ -166,12 +166,12 @@ class GxEPD2_1330c_EL133UF3 : public GxEPD2_EPD
   inline void _tft_vcom_power(CsType cs_type = CsType::CS_MASTER);
   inline void _set_cs(const CsType cs_type, uint8_t level);
   void _writeColor(uint8_t color_value, CsType cs_type = CsType::CS_MASTER);
-  uint8_t _remap_byte(uint8_t byte); //change the color values to match EL133UF3 requirements
+  uint8_t _remap_byte(uint8_t byte);  // change the color values to match EL133UF3 requirements
 
-  private:
+ private:
   bool _paged;
   uint8_t _cs_slave;
-  uint8_t _paging_step; // 0=Init, 1=Master, 2=Slave
+  uint8_t _paging_step;  // 0=Init, 1=Master, 2=Slave
 };
 
 #endif
