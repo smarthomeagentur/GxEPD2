@@ -101,6 +101,7 @@ public:
     static const uint16_t power_off_time = 150;         // ms, e.g. 145000us
     static const uint16_t full_refresh_time = 40000;    // ms, e.g. 38858000us
     static const uint16_t partial_refresh_time = 40000; // ms, e.g. 38858000us
+    bool hasDualController() const override { return true; }
     // constructor
     GxEPD2_1330c_EL133UF3(int16_t cs, int16_t cs_slave, int16_t dc, int16_t rst, int16_t busy);
     void init(uint32_t serial_diag_bitrate = 0); // serial_diag_bitrate = 0 : disabled
