@@ -165,6 +165,7 @@ public:
     ACeP730,
     Waveshare_7_30_7c = ACeP730,
     GDEP073E01,
+    EL133UF3
   };
 };
 

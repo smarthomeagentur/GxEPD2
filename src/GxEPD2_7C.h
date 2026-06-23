@@ -63,6 +63,9 @@
 #if __has_include("epd7c/GxEPD2_730c_GDEP073E01.h")
 #include "epd7c/GxEPD2_730c_GDEP073E01.h"
 #endif
+#if __has_include("epd7c/GxEPD2_1330c_EL133UF3.h")
+#include "epd7c/GxEPD2_1330c_EL133UF3.h"
+#endif
 
 template <typename GxEPD2_Type, const uint16_t page_height>
 class GxEPD2_7C : public GxEPD2_GFX_BASE_CLASS
@@ -282,12 +285,23 @@ public:
         _current_page = 0;
         if (!_second_phase)
         {
+          if (epd2.hasDualController())
+          {
+            epd2.setPaged();
+            _second_phase = true;
+            fillScreen(GxEPD_WHITE);
+            return true;
+          }
           epd2.refresh(_pw_x, _pw_y, _pw_w, _pw_h);
           if (epd2.hasFastPartialUpdate)
           {
             _second_phase = true;
             return true;
           }
+        }
+        else if (epd2.hasDualController())
+        {
+          epd2.refresh(_pw_x, _pw_y, _pw_w, _pw_h);
         }
         return false;
       }
@@ -312,6 +326,18 @@ public:
           }
           else
             epd2.refresh(true); // partial update after second phase
+        }
+        else if (epd2.hasDualController())
+        {
+          if (!_second_phase)
+          {
+            epd2.setPaged(); // phase 2 for dual controllers
+            _second_phase = true;
+            fillScreen(GxEPD_WHITE);
+            return true;
+          }
+          else
+            epd2.refresh(false); // full update after both phases
         }
         else
           epd2.refresh(false); // full update after only phase
@@ -345,13 +371,18 @@ public:
     }
     else // full update
     {
-      epd2.setPaged(); // for GxEPD2_154c paged workaround
-      for (_current_page = 0; _current_page < _pages; _current_page++)
+      uint8_t phases = epd2.hasDualController() ? 2 : 1;
+      epd2.setPaged(); // for GxEPD2_154c paged workaround or phase 1
+      for (uint8_t phase = 0; phase < phases; phase++)
       {
-        uint16_t page_ys = _current_page * _page_height;
-        fillScreen(GxEPD_WHITE);
-        drawCallback(pv);
-        epd2.writeNative(_pixel_buffer, 0, 0, page_ys, GxEPD2_Type::WIDTH, gx_uint16_min(_page_height, HEIGHT - page_ys));
+        if (phase == 1) epd2.setPaged(); // phase 2
+        for (_current_page = 0; _current_page < _pages; _current_page++)
+        {
+          uint16_t page_ys = _current_page * _page_height;
+          fillScreen(GxEPD_WHITE);
+          drawCallback(pv);
+          epd2.writeNative(_pixel_buffer, 0, 0, page_ys, GxEPD2_Type::WIDTH, gx_uint16_min(_page_height, HEIGHT - page_ys));
+        }
       }
       epd2.refresh(false); // full update
       epd2.powerOff();

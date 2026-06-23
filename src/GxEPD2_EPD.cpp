@@ -17,11 +17,9 @@
 #include <avr/pgmspace.h>
 #endif
 
-GxEPD2_EPD::GxEPD2_EPD(int16_t cs, int16_t dc, int16_t rst, int16_t busy, int16_t busy_level, uint32_t busy_timeout,
-                       uint16_t w, uint16_t h, GxEPD2::Panel p, bool c, bool pu, bool fpu) :
-  WIDTH(w), HEIGHT(h), panel(p), hasColor(c), hasPartialUpdate(pu), hasFastPartialUpdate(fpu),
-  _cs(cs), _dc(dc), _rst(rst), _busy(busy), _busy_level(busy_level), _busy_timeout(busy_timeout), _diag_enabled(false),
-  _pSPIx(&SPI), _spi_settings(4000000, MSBFIRST, SPI_MODE0)
+GxEPD2_EPD::GxEPD2_EPD(int16_t cs, int16_t dc, int16_t rst, int16_t busy, int16_t busy_level, uint32_t busy_timeout, uint16_t w, uint16_t h, GxEPD2::Panel p, bool c, bool pu, bool fpu) :
+    WIDTH(w), HEIGHT(h), panel(p), hasColor(c), hasPartialUpdate(pu), hasFastPartialUpdate(fpu), _cs(cs), _dc(dc), _rst(rst), _busy(busy), _busy_level(busy_level), _busy_timeout(busy_timeout), _diag_enabled(false), _pSPIx(&SPI),
+    _spi_settings(4000000, MSBFIRST, SPI_MODE0)
 {
   _initial_write = true;
   _initial_refresh = true;
@@ -124,7 +122,7 @@ void GxEPD2_EPD::_reset()
       digitalWrite(_rst, HIGH); // NEEDED for Waveshare "clever" reset circuit, power controller before reset pulse, preset (less glitch for any analyzer)
       pinMode(_rst, OUTPUT);
       digitalWrite(_rst, HIGH); // NEEDED for Waveshare "clever" reset circuit, power controller before reset pulse, set (needed e.g. for RP2040)
-      delay(10); // NEEDED for Waveshare "clever" reset circuit, at least delay(2);
+      delay(10);                // NEEDED for Waveshare "clever" reset circuit, at least delay(2);
       digitalWrite(_rst, LOW);
       delay(_reset_duration);
       digitalWrite(_rst, HIGH);
@@ -144,7 +142,8 @@ void GxEPD2_EPD::_waitWhileBusy(const char* comment, uint16_t busy_time)
     {
       if (digitalRead(_busy) != _busy_level) break;
       if (_busy_callback) _busy_callback(_busy_callback_parameter);
-      else delay(1);
+      else
+        delay(1);
       if (digitalRead(_busy) != _busy_level) break;
       if (micros() - start > _busy_timeout)
       {
@@ -167,9 +166,10 @@ void GxEPD2_EPD::_waitWhileBusy(const char* comment, uint16_t busy_time)
       }
 #endif
     }
-    (void) start;
+    (void)start;
   }
-  else delay(busy_time);
+  else
+    delay(busy_time);
 }
 
 void GxEPD2_EPD::_writeCommand(uint8_t c)
@@ -247,7 +247,7 @@ void GxEPD2_EPD::_writeCommandData(const uint8_t* pCommandData, uint8_t datalen)
   if (_cs >= 0) digitalWrite(_cs, LOW);
   _pSPIx->transfer(*pCommandData++);
   if (_dc >= 0) digitalWrite(_dc, HIGH);
-  for (uint8_t i = 0; i < datalen - 1; i++)  // sub the command
+  for (uint8_t i = 0; i < datalen - 1; i++) // sub the command
   {
     _pSPIx->transfer(*pCommandData++);
   }
@@ -262,7 +262,7 @@ void GxEPD2_EPD::_writeCommandDataPGM(const uint8_t* pCommandData, uint8_t datal
   if (_cs >= 0) digitalWrite(_cs, LOW);
   _pSPIx->transfer(pgm_read_byte(&*pCommandData++));
   if (_dc >= 0) digitalWrite(_dc, HIGH);
-  for (uint8_t i = 0; i < datalen - 1; i++)  // sub the command
+  for (uint8_t i = 0; i < datalen - 1; i++) // sub the command
   {
     _pSPIx->transfer(pgm_read_byte(&*pCommandData++));
   }
