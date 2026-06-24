@@ -7,6 +7,12 @@ GxEPD2_1330c_EL133UF3::GxEPD2_1330c_EL133UF3(int16_t cs, int16_t cs_slave, int16
 }
 
 void GxEPD2_1330c_EL133UF3::init(uint32_t serial_diag_bitrate) {
+   _use_alt_init = false;
+   init(serial_diag_bitrate, true, 30, false);
+}
+
+void GxEPD2_1330c_EL133UF3::initAlt(uint32_t serial_diag_bitrate) {
+   _use_alt_init = true;
    init(serial_diag_bitrate, true, 30, false);
 }
 
@@ -90,7 +96,11 @@ void GxEPD2_1330c_EL133UF3::writeScreenBuffer(uint8_t color_set, uint8_t color_v
 
    if (!_init_display_done) {
       Serial.println("[DISP] Init Start");
-      _InitDisplay();
+      if (_use_alt_init) {
+         _InitDisplayAlt();
+      } else {
+         _InitDisplay();
+      }
       Serial.println("[DISP] Init End");
    }
 
@@ -105,7 +115,11 @@ void GxEPD2_1330c_EL133UF3::writeScreenBuffer(uint8_t color_set, uint8_t color_v
 
 void GxEPD2_1330c_EL133UF3::writeImage(const uint8_t bitmap[], int16_t x, int16_t y, int16_t w, int16_t h, bool invert, bool mirror_y, bool pgm) {
    if (!_init_display_done)
-      _InitDisplay();
+      if (_use_alt_init) {
+         _InitDisplayAlt();
+      } else {
+         _InitDisplay();
+      }
    int16_t w_half = WIDTH / 2;
    int16_t bytes_per_line_half = w_half / 2;
 
@@ -278,7 +292,11 @@ void GxEPD2_1330c_EL133UF3::writeImagePart(const uint8_t* black, const uint8_t* 
 
 void GxEPD2_1330c_EL133UF3::writeImageFromPSRAM(const uint8_t* buffer, int16_t x, int16_t y, int16_t w, int16_t h, uint8_t rotation) {
    if (!_init_display_done)
-      _InitDisplay();
+      if (_use_alt_init) {
+         _InitDisplayAlt();
+      } else {
+         _InitDisplay();
+      }
 
    _paged = false;
    int16_t wb = w / 2 + (w % 2 != 0 ? 1 : 0);  // bytes per line input (2 pix per byte)
@@ -621,6 +639,61 @@ void GxEPD2_1330c_EL133UF3::_InitDisplay() {
    _btst_n(CsType::CS_MASTER);
    _buck_boost_vddn(CsType::CS_MASTER);
    _tft_vcom_power(CsType::CS_MASTER);
+
+   _init_display_done = true;
+}
+
+void GxEPD2_1330c_EL133UF3::_InitDisplayAlt() {
+   _reset();
+
+   _waitWhileBusy("initReset", power_off_time);
+
+   const uint8_t AN_TM_V[] = {0xC0, 0x1C, 0x1C, 0xCC, 0xCC, 0xCC, 0x15, 0x15, 0x55};
+   const uint8_t CMD66_V[] = {0x49, 0x55, 0x13, 0x5D, 0x05, 0x10};
+   const uint8_t PSR_V[] = {0xDF, 0x6B};
+   const uint8_t DCDC_V[] = {0x44, 0x54, 0x00};
+   const uint8_t PLL_V[] = {0x08};
+   const uint8_t CDI_V[] = {0x37};
+   const uint8_t TCON_V[] = {0x03, 0x03};
+   const uint8_t POFS_MV[] = {0x00, 0xC0, 0x03, 0xA4};
+   const uint8_t POFS_SV[] = {0x00, 0xC0, 0x03, 0x95};
+   const uint8_t AGID_V[] = {0x10};
+   const uint8_t PWS_V[] = {0x22};
+   const uint8_t CCSET_V[] = {0x01};
+   const uint8_t TRES_V[] = {0x04, 0xB0, 0x03, 0x20};
+   const uint8_t CMDA4_V[] = {0x03, 0x00, 0x01, 0x03, 0x00, 0x03, 0x00, 0x00, 0x00};
+   const uint8_t PWR_V[] = {0x0F, 0x00, 0x28, 0x2C, 0x28, 0x38};
+   const uint8_t EN_BUF_V[] = {0x07};
+   const uint8_t BTST_P_V[] = {0xD8, 0x18};
+   const uint8_t BOOST_VDDP_EN_V[] = {0x01};
+   const uint8_t BTST_N_V[] = {0xD8, 0x18};
+   const uint8_t BUCK_BOOST_VDDN_V[] = {0x01};
+   const uint8_t TFT_VCOM_POWER_V[] = {0x02};
+
+   _writeEN133UF3DataCmd(0x74, AN_TM_V, sizeof(AN_TM_V), CsType::CS_MASTER);
+   _writeEN133UF3DataCmd(0xF0, CMD66_V, sizeof(CMD66_V), CsType::CS_MASTER_SLAVE);
+   _writeEN133UF3DataCmd(0x00, PSR_V, sizeof(PSR_V), CsType::CS_MASTER_SLAVE);
+   _writeEN133UF3DataCmd(0xA5, DCDC_V, sizeof(DCDC_V), CsType::CS_MASTER);
+   _writeEN133UF3DataCmd(0x30, PLL_V, sizeof(PLL_V), CsType::CS_MASTER_SLAVE);
+   _writeEN133UF3DataCmd(0x50, CDI_V, sizeof(CDI_V), CsType::CS_MASTER_SLAVE);
+   _writeEN133UF3DataCmd(0x60, TCON_V, sizeof(TCON_V), CsType::CS_MASTER_SLAVE);
+
+   _writeEN133UF3DataCmd(0x03, POFS_MV, sizeof(POFS_MV), CsType::CS_MASTER);
+   _writeEN133UF3DataCmd(0x03, POFS_SV, sizeof(POFS_SV), CsType::CS_SLAVE);
+
+   _writeEN133UF3DataCmd(0x86, AGID_V, sizeof(AGID_V), CsType::CS_MASTER_SLAVE);
+   _writeEN133UF3DataCmd(0xE3, PWS_V, sizeof(PWS_V), CsType::CS_MASTER_SLAVE);
+   _writeEN133UF3DataCmd(0xE0, CCSET_V, sizeof(CCSET_V), CsType::CS_MASTER_SLAVE);
+   _writeEN133UF3DataCmd(0x61, TRES_V, sizeof(TRES_V), CsType::CS_MASTER_SLAVE);
+
+   _writeEN133UF3DataCmd(0xA4, CMDA4_V, sizeof(CMDA4_V), CsType::CS_MASTER);
+   _writeEN133UF3DataCmd(0x01, PWR_V, sizeof(PWR_V), CsType::CS_MASTER);
+   _writeEN133UF3DataCmd(0xB6, EN_BUF_V, sizeof(EN_BUF_V), CsType::CS_MASTER);
+   _writeEN133UF3DataCmd(0x06, BTST_P_V, sizeof(BTST_P_V), CsType::CS_MASTER);
+   _writeEN133UF3DataCmd(0xB7, BOOST_VDDP_EN_V, sizeof(BOOST_VDDP_EN_V), CsType::CS_MASTER);
+   _writeEN133UF3DataCmd(0x05, BTST_N_V, sizeof(BTST_N_V), CsType::CS_MASTER);
+   _writeEN133UF3DataCmd(0xB0, BUCK_BOOST_VDDN_V, sizeof(BUCK_BOOST_VDDN_V), CsType::CS_MASTER);
+   _writeEN133UF3DataCmd(0xB1, TFT_VCOM_POWER_V, sizeof(TFT_VCOM_POWER_V), CsType::CS_MASTER);
 
    _init_display_done = true;
 }
