@@ -105,6 +105,7 @@ public:
     // constructor
     GxEPD2_1330c_EL133UF3(int16_t cs, int16_t cs_slave, int16_t dc, int16_t rst, int16_t busy);
     void init(uint32_t serial_diag_bitrate = 0); // serial_diag_bitrate = 0 : disabled
+    void initAlt(uint32_t serial_diag_bitrate = 0); // use _InitDisplayAlt
     void init(uint32_t serial_diag_bitrate, bool initial, uint16_t reset_duration = 30, bool pulldown_rst_mode = false);
     void enableQuickRefresh(int16_t refresh_stop_time, bool endable); // enable quick refresh, default 1000ms
     // methods (virtual)
@@ -146,6 +147,7 @@ private:
     uint8_t _colorOfDemoBitmap(uint8_t from);
     void _powerOn();
     void _InitDisplay();
+    void _InitDisplayAlt();
     void _writeEN133UF3DataCmd(uint8_t cmd, const uint8_t *data, uint8_t data_len, CsType cs_type = CsType::CS_MASTER);
     void _writeEN133UF3Cmd(uint8_t cmd, CsType cs_type = CsType::CS_MASTER);
     inline void _psr(CsType cs_type = CsType::CS_MASTER);
@@ -176,6 +178,7 @@ private:
     uint8_t _cs_slave;
     uint8_t _paging_step; // 0=Init, 1=Master, 2=Slave
     bool _epd_quick = false;
+    bool _use_alt_init = false;
     int16_t _epd_quick_stop_time = 1000;
 };
 

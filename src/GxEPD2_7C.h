@@ -151,6 +151,14 @@ public:
     setFullWindow();
   }
 
+  void initAlt(uint32_t serial_diag_bitrate = 0) // = 0 : disabled
+  {
+    epd2.initAlt(serial_diag_bitrate);
+    _using_partial_mode = false;
+    _current_page = 0;
+    setFullWindow();
+  }
+
   // init method with additional parameters:
   // initial false for re-init after processor deep sleep wake up, if display power supply was kept
   // only relevant for b/w displays with fast partial update
