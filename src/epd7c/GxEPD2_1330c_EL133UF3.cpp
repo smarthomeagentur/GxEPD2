@@ -95,13 +95,11 @@ void GxEPD2_1330c_EL133UF3::writeScreenBuffer(uint8_t color_set, uint8_t color_v
    uint8_t color = (color_set << 4) | (color_set & 0x0F);
 
    if (!_init_display_done) {
-      Serial.println("[DISP] Init Start");
       if (_use_alt_init) {
          _InitDisplayAlt();
       } else {
          _InitDisplay();
       }
-      Serial.println("[DISP] Init End");
    }
 
    // _powerOn(); // REMOVED: Power On should happen in refresh(), after data is written.
@@ -417,7 +415,6 @@ void GxEPD2_1330c_EL133UF3::drawDemoBitmap(const uint8_t* data1, const uint8_t* 
 void GxEPD2_1330c_EL133UF3::refresh(bool partial_update_mode) {
    if (_paging_step == 1)
       return;
-   Serial.println("[DISP] Refresh Start");
    _powerOn();
    _waitWhileBusy();  // for the love of god, please do not remove this
    delay(30);
@@ -444,7 +441,6 @@ void GxEPD2_1330c_EL133UF3::refresh(int16_t x, int16_t y, int16_t w, int16_t h) 
 void GxEPD2_1330c_EL133UF3::powerOff() {
    if (_paging_step == 1)
       return;
-   Serial.println("[DISP] Power Off");
    _pof(CsType::CS_MASTER_SLAVE);
    _waitWhileBusy("powerOff", power_off_time);
    _power_is_on = false;
