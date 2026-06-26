@@ -95,7 +95,8 @@ public:
     static const uint16_t HALF_WIDTH = (WIDTH % 2 == 0) ? (WIDTH / 2) : (WIDTH / 2 + 1);
     static const GxEPD2::Panel panel = GxEPD2::GDEY073D46;
     static const bool hasColor = true;
-    static const bool hasPartialUpdate = false;
+    static const bool hasPartialUpdate = true;
+    static const bool usePartialUpdate = true;
     static const bool hasFastPartialUpdate = false;
     static const uint16_t power_on_time = 200;          // ms, e.g. 172000us
     static const uint16_t power_off_time = 150;         // ms, e.g. 145000us
@@ -143,11 +144,16 @@ public:
     void powerOff();                                          // turns off generation of panel driving voltages, avoids screen fading over time
     void hibernate();                                         // turns powerOff() and sets controller to deep sleep for minimum power use, ONLY if wakeable by RST (rst >= 0)
     void setPaged();                                          // for GxEPD2_154c and GxEPD2_565c and GxEPD2_730c_GDEY073D46 paged workaround
+
+    void setSuspendRefresh(bool suspend) { _suspend_refresh = suspend; }
+
 private:
     uint8_t _colorOfDemoBitmap(uint8_t from);
     void _powerOn();
     void _InitDisplay();
     void _InitDisplayAlt();
+    void _setPartialRamArea(uint16_t x, uint16_t y, uint16_t w, uint16_t h, CsType cs_type);
+    void _clearPartialRamArea(CsType cs_type);
     void _writeEN133UF3DataCmd(uint8_t cmd, const uint8_t *data, uint8_t data_len, CsType cs_type = CsType::CS_MASTER);
     void _writeEN133UF3Cmd(uint8_t cmd, CsType cs_type = CsType::CS_MASTER);
     inline void _psr(CsType cs_type = CsType::CS_MASTER);
@@ -179,6 +185,7 @@ private:
     uint8_t _paging_step; // 0=Init, 1=Master, 2=Slave
     bool _epd_quick = false;
     bool _use_alt_init = false;
+    bool _suspend_refresh = false;
     int16_t _epd_quick_stop_time = 1000;
 };
 

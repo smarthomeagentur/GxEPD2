@@ -95,13 +95,11 @@ void GxEPD2_1330c_EL133UF3::writeScreenBuffer(uint8_t color_set, uint8_t color_v
    uint8_t color = (color_set << 4) | (color_set & 0x0F);
 
    if (!_init_display_done) {
-      Serial.println("[DISP] Init Start");
       if (_use_alt_init) {
          _InitDisplayAlt();
       } else {
          _InitDisplay();
       }
-      Serial.println("[DISP] Init End");
    }
 
    // _powerOn(); // REMOVED: Power On should happen in refresh(), after data is written.
@@ -126,7 +124,7 @@ void GxEPD2_1330c_EL133UF3::writeImage(const uint8_t bitmap[], int16_t x, int16_
    if (_paged && (x == 0) && (w == int16_t(WIDTH)) && (h < int16_t(HEIGHT))) {
       int16_t bytes_per_line_bitmap = w / 2;
 
-      if (_paging_step == 1) {  // MASTER {
+      if (_paging_step == 1) {  // MASTER
          _pSPIx->beginTransaction(_spi_settings);
          if (y == 0) {
             _set_cs(CsType::CS_MASTER, LOW);
@@ -174,111 +172,163 @@ void GxEPD2_1330c_EL133UF3::writeImage(const uint8_t bitmap[], int16_t x, int16_
          _pSPIx->endTransaction();
       }
    } else {
-      // TODO: still untested without paging, this is just vibe coded!
       _paged = false;
       int16_t wb = (w + 1) / 2;  // bytes per line input (2 pix per byte)
-      x -= x % 8;                // dummy alignment if needed, but here we work on bytes
-      w = 2 * ((w + 1) / 2);     // align to byte
+      w += x % 4;
+      x -= x % 4;
+      w = 4 * ((w + 3) / 4);
+
+      h += y % 2;
+      y -= y % 2;
+      h = 2 * ((h + 1) / 2);
 
       if ((w <= 0) || (h <= 0))
          return;
 
-      // Master
-      _pSPIx->beginTransaction(_spi_settings);
-      _set_cs(CsType::CS_MASTER, LOW);
-      _pSPIx->transfer(DTM);
-
-      for (int16_t i = 0; i < int16_t(HEIGHT); i++) {
-         for (int16_t j = 0; j < int16_t(WIDTH / 2); j += 2)  // Master is 0..599 pixels. Input 4-bit means 0..300 bytes?
-            // Wait, let's just loop bytes. 300 bytes.
-            // Master covers pixels 0 to 599.
-            // j counts pixels? No, let's count bytes.
-            for (int16_t byte_idx = 0; byte_idx < 300; byte_idx++) {
-               // This byte corresponds to pixels (byte_idx*2) and (byte_idx*2 + 1) in Master column.
-               int16_t global_x = byte_idx * 2;
-
-               uint8_t data = 0xFF;  // Clean/White (Standard GxEPD2 0x11 is white, so 0xFF is invalid/clean? No, 0x11 is White-White)
-               // Wait, if GxEPD2 standard is 1=White, then White-White is 0x11.
-               // 0xFF (15) is undefined. But if we use default logic, better initialize to mapped White.
-               // Standard White is 1. Remapped White is 1. So 0x11.
-               data = 0x11;
-
-               if ((global_x >= x) && (global_x < x + w) && (i >= y) && (i < y + h)) {
-                  int16_t bitmap_x = global_x - x;  // relative x in bitmap
-                  int16_t bitmap_y = i - y;         // relative y
-
-                  // Index in bitmap
-                  uint32_t idx = mirror_y ? (bitmap_x / 2) + uint32_t((h - 1 - bitmap_y)) * wb
-                                          : (bitmap_x / 2) + uint32_t(bitmap_y) * wb;
-
-                  if (pgm)
-                     data = pgm_read_byte(&bitmap[idx]);
-                  else
-                     data = bitmap[idx];
-
-                  data = _remap_byte(data);  // Remap BEFORE invert
-
-                  if (invert)
-                     data = ~data;
-               } else {
-                  // If outside window, we should send "Clean" value.
-                  // If we send 0x11 (White), and remap it -> 0x11. Correct.
-               }
-
-               _pSPIx->transfer(data);
-            }
+      // Master Chip
+      int16_t x_master = x;
+      int16_t w_master = w;
+      if (x_master < 600) {
+          if (x_master + w_master > 600) w_master = 600 - x_master;
+          _setPartialRamArea(x_master, y, w_master, h, CsType::CS_MASTER);
+          
+          _pSPIx->beginTransaction(_spi_settings);
+          _set_cs(CsType::CS_MASTER, LOW);
+          _pSPIx->transfer(DTM);
+          
+          for (int16_t i = 0; i < h; i++) {
+             for (int16_t j = 0; j < w_master; j += 2) {
+                int16_t bitmap_x = x_master + j - x;
+                int16_t bitmap_y = i;
+                uint32_t idx = mirror_y ? (bitmap_x / 2) + uint32_t((h - 1 - bitmap_y)) * wb
+                                        : (bitmap_x / 2) + uint32_t(bitmap_y) * wb;
+                uint8_t data = pgm ? pgm_read_byte(&bitmap[idx]) : bitmap[idx];
+                data = _remap_byte(data);
+                if (invert) data = ~data;
+                _pSPIx->transfer(data);
+             }
+          }
+          _set_cs(CsType::CS_MASTER, HIGH);
+          _pSPIx->endTransaction();
       }
-      _set_cs(CsType::CS_MASTER, HIGH);
-      _pSPIx->endTransaction();
 
-      // Slave
-      _pSPIx->beginTransaction(_spi_settings);
-      _set_cs(CsType::CS_SLAVE, LOW);
-      _pSPIx->transfer(DTM);
-
-      for (int16_t i = 0; i < int16_t(HEIGHT); i++) {
-         for (int16_t byte_idx = 0; byte_idx < 300; byte_idx++) {
-            int16_t pixel_x_base = 600 + byte_idx * 2;  // Slave starts at 600
-            int16_t global_x = pixel_x_base;
-
-            uint8_t data = 0x11;  // Clean/White
-
-            if ((global_x >= x) && (global_x < x + w) && (i >= y) && (i < y + h)) {
-               int16_t bitmap_x = global_x - x;
-               int16_t bitmap_y = i - y;
-               uint32_t idx =
-                   mirror_y ? (bitmap_x / 2) + uint32_t((h - 1 - bitmap_y)) * wb : (bitmap_x / 2) + uint32_t(bitmap_y) * wb;
-
-               if (pgm)
-                  data = pgm_read_byte(&bitmap[idx]);
-               else
-                  data = bitmap[idx];
-
-               data = _remap_byte(data);
-
-               if (invert)
-                  data = ~data;
-            }
-            _pSPIx->transfer(data);
-         }
+      // Slave Chip
+      int16_t x_slave = x;
+      int16_t w_slave = w;
+      if (x_slave + w_slave > 600) {
+          if (x_slave < 600) {
+              w_slave = w_slave - (600 - x_slave);
+              x_slave = 600;
+          }
+          _setPartialRamArea(x_slave - 600, y, w_slave, h, CsType::CS_SLAVE);
+          
+          _pSPIx->beginTransaction(_spi_settings);
+          _set_cs(CsType::CS_SLAVE, LOW);
+          _pSPIx->transfer(DTM);
+          
+          for (int16_t i = 0; i < h; i++) {
+             for (int16_t j = 0; j < w_slave; j += 2) {
+                int16_t bitmap_x = x_slave + j - x;
+                int16_t bitmap_y = i;
+                uint32_t idx = mirror_y ? (bitmap_x / 2) + uint32_t((h - 1 - bitmap_y)) * wb
+                                        : (bitmap_x / 2) + uint32_t(bitmap_y) * wb;
+                uint8_t data = pgm ? pgm_read_byte(&bitmap[idx]) : bitmap[idx];
+                data = _remap_byte(data);
+                if (invert) data = ~data;
+                _pSPIx->transfer(data);
+             }
+          }
+          _set_cs(CsType::CS_SLAVE, HIGH);
+          _pSPIx->endTransaction();
       }
-      _set_cs(CsType::CS_SLAVE, HIGH);
-      _pSPIx->endTransaction();
    }
 }
 
 void GxEPD2_1330c_EL133UF3::writeImagePart(const uint8_t bitmap[], int16_t x_part, int16_t y_part, int16_t w_bitmap,
                                            int16_t h_bitmap, int16_t x, int16_t y, int16_t w, int16_t h, bool invert,
                                            bool mirror_y, bool pgm) {
-   // TODO: implement the partial full refresh op spectra 6
-   //  For now, redirect to writeImage if it looks like a full page write that matches our simplistic assumption
-   //  or just implement the write loop assuming DTM works sequentially if we don't reset?
-   //  No, we cannot assume DTM continuation across transactions.
-   //  We will attempt to use writeImage logic for the part.
-   //  If the controller doesn't support windowing, this will write to the top-left!
-   //  But since we can't easily find the window command, this is the best effort.
-   //  If w == WIDTH and h == HEIGHT, it works.
-   writeImage(bitmap, x, y, w, h, invert, mirror_y, pgm);  // Simply forward.
+   if (!_init_display_done)
+      if (_use_alt_init) {
+         _InitDisplayAlt();
+      } else {
+         _InitDisplay();
+      }
+   
+   if ((w_bitmap < 0) || (h_bitmap < 0) || (w < 0) || (h < 0)) return;
+   if ((x_part < 0) || (x_part >= w_bitmap)) return;
+   if ((y_part < 0) || (y_part >= h_bitmap)) return;
+   
+   int16_t wb_bitmap = (w_bitmap + 1) / 2; // width bytes, bitmaps are padded
+   x_part -= x_part % 4;
+   w = w_bitmap - x_part < w ? w_bitmap - x_part : w; // limit
+   h = h_bitmap - y_part < h ? h_bitmap - y_part : h; // limit
+   w += x % 4;
+   x -= x % 4;
+   w = 4 * ((w + 3) / 4);
+
+   h += y % 2;
+   y -= y % 2;
+   h = 2 * ((h + 1) / 2);
+
+   if ((w <= 0) || (h <= 0))
+      return;
+
+   // Master Chip
+   int16_t x_master = x;
+   int16_t w_master = w;
+   if (x_master < 600) {
+       if (x_master + w_master > 600) w_master = 600 - x_master;
+       _setPartialRamArea(x_master, y, w_master, h, CsType::CS_MASTER);
+       
+       _pSPIx->beginTransaction(_spi_settings);
+       _set_cs(CsType::CS_MASTER, LOW);
+       _pSPIx->transfer(DTM);
+       
+       for (int16_t i = 0; i < h; i++) {
+          for (int16_t j = 0; j < w_master; j += 2) {
+             int16_t bitmap_x = x_master + j - x;
+             int16_t bitmap_y = i;
+             uint32_t idx = mirror_y ? (x_part / 2) + (bitmap_x / 2) + uint32_t((h_bitmap - 1 - (y_part + bitmap_y))) * wb_bitmap
+                                     : (x_part / 2) + (bitmap_x / 2) + uint32_t(y_part + bitmap_y) * wb_bitmap;
+             uint8_t data = pgm ? pgm_read_byte(&bitmap[idx]) : bitmap[idx];
+             data = _remap_byte(data);
+             if (invert) data = ~data;
+             _pSPIx->transfer(data);
+          }
+       }
+       _set_cs(CsType::CS_MASTER, HIGH);
+       _pSPIx->endTransaction();
+   }
+
+   // Slave Chip
+   int16_t x_slave = x;
+   int16_t w_slave = w;
+   if (x_slave + w_slave > 600) {
+       if (x_slave < 600) {
+           w_slave = w_slave - (600 - x_slave);
+           x_slave = 600;
+       }
+       _setPartialRamArea(x_slave - 600, y, w_slave, h, CsType::CS_SLAVE);
+       
+       _pSPIx->beginTransaction(_spi_settings);
+       _set_cs(CsType::CS_SLAVE, LOW);
+       _pSPIx->transfer(DTM);
+       
+       for (int16_t i = 0; i < h; i++) {
+          for (int16_t j = 0; j < w_slave; j += 2) {
+             int16_t bitmap_x = x_slave + j - x;
+             int16_t bitmap_y = i;
+             uint32_t idx = mirror_y ? (x_part / 2) + (bitmap_x / 2) + uint32_t((h_bitmap - 1 - (y_part + bitmap_y))) * wb_bitmap
+                                     : (x_part / 2) + (bitmap_x / 2) + uint32_t(y_part + bitmap_y) * wb_bitmap;
+             uint8_t data = pgm ? pgm_read_byte(&bitmap[idx]) : bitmap[idx];
+             data = _remap_byte(data);
+             if (invert) data = ~data;
+             _pSPIx->transfer(data);
+          }
+       }
+       _set_cs(CsType::CS_SLAVE, HIGH);
+       _pSPIx->endTransaction();
+   }
 }
 
 void GxEPD2_1330c_EL133UF3::writeImage(const uint8_t* black, const uint8_t* color, int16_t x, int16_t y, int16_t w,
@@ -415,12 +465,17 @@ void GxEPD2_1330c_EL133UF3::drawDemoBitmap(const uint8_t* data1, const uint8_t* 
 }
 
 void GxEPD2_1330c_EL133UF3::refresh(bool partial_update_mode) {
+   if (_suspend_refresh) return;
    if (_paging_step == 1)
       return;
-   Serial.println("[DISP] Refresh Start");
    _powerOn();
    _waitWhileBusy();  // for the love of god, please do not remove this
    delay(30);
+
+   if (!partial_update_mode) {
+       _clearPartialRamArea(CsType::CS_MASTER_SLAVE);
+   }
+
    _drf(CsType::CS_MASTER_SLAVE);
    delay(1);
    if (_epd_quick) {
@@ -438,13 +493,66 @@ void GxEPD2_1330c_EL133UF3::refresh(bool partial_update_mode) {
 }
 
 void GxEPD2_1330c_EL133UF3::refresh(int16_t x, int16_t y, int16_t w, int16_t h) {
-   refresh();
+   if (_suspend_refresh) return;
+   if (_paging_step == 1)
+      return;
+   _powerOn();
+   _waitWhileBusy();
+   delay(30);
+
+   int16_t x_master = x;
+   int16_t w_master = w;
+   CsType refresh_cs = CsType::CS_NONE;
+
+   if (x_master < 600) {
+       if (x_master + w_master > 600) w_master = 600 - x_master;
+       _setPartialRamArea(x_master, y, w_master, h, CsType::CS_MASTER);
+       refresh_cs = refresh_cs | CsType::CS_MASTER;
+   } else {
+       // Master is not part of the visual update, BUT it must execute a refresh cycle
+       // in order to generate the high-voltage DCDC power for the Slave controller!
+       // We set a tiny 2x2 dummy window on the Master so it doesn't wipe the screen.
+       _setPartialRamArea(0, 0, 2, 2, CsType::CS_MASTER);
+       refresh_cs = refresh_cs | CsType::CS_MASTER;
+   }
+
+   int16_t x_slave = x;
+   int16_t w_slave = w;
+   if (x_slave + w_slave > 600) {
+       if (x_slave < 600) {
+           w_slave = w_slave - (600 - x_slave);
+           x_slave = 600;
+       }
+       _setPartialRamArea(x_slave - 600, y, w_slave, h, CsType::CS_SLAVE);
+       refresh_cs = refresh_cs | CsType::CS_SLAVE;
+   } else {
+       // Slave is not part of the visual update, BUT we set a tiny 2x2 dummy window
+       // to keep the panel refresh synchronized and prevent weird glitches/pulses on the right side.
+       _setPartialRamArea(0, 0, 2, 2, CsType::CS_SLAVE);
+       refresh_cs = refresh_cs | CsType::CS_SLAVE;
+   }
+
+   if (refresh_cs != CsType::CS_NONE) {
+       _drf(refresh_cs);
+       delay(1);
+       if (_epd_quick) {
+          delay(_epd_quick_stop_time);  // Time until force stop refresh
+          pinMode(_rst, OUTPUT);        // just in case
+          digitalWrite(_rst, HIGH);
+          delay(50);  // needs a little longer
+          digitalWrite(_rst, LOW);
+          delay(20);
+          digitalWrite(_rst, HIGH);
+          delay(10);  // 4ms measured
+       }
+       _waitWhileBusy("refresh", full_refresh_time);
+   }
+   _paging_step = 0;
 }
 
 void GxEPD2_1330c_EL133UF3::powerOff() {
    if (_paging_step == 1)
       return;
-   Serial.println("[DISP] Power Off");
    _pof(CsType::CS_MASTER_SLAVE);
    _waitWhileBusy("powerOff", power_off_time);
    _power_is_on = false;
@@ -709,4 +817,31 @@ void GxEPD2_1330c_EL133UF3::_powerOn() {
 inline void GxEPD2_1330c_EL133UF3::_set_cs(const CsType cs_type, const uint8_t level) {
    if ((cs_type & CsType::CS_MASTER) == CsType::CS_MASTER && _cs >= 0) digitalWrite(_cs, level);
    if ((cs_type & CsType::CS_SLAVE) == CsType::CS_SLAVE && _cs_slave >= 0) digitalWrite(_cs_slave, level);
+}
+
+void GxEPD2_1330c_EL133UF3::_setPartialRamArea(uint16_t x, uint16_t y, uint16_t w, uint16_t h, CsType cs_type) {
+   uint16_t HRST = x * 2;
+   uint16_t HRED = (x + w) * 2 - 1;
+   uint16_t VRST = y / 2;
+   uint16_t VRED = (y + h) / 2 - 1;
+
+   uint8_t data[9] = {
+       (uint8_t)(HRST >> 8),
+       (uint8_t)(HRST & 0xFF),
+       (uint8_t)(HRED >> 8),
+       (uint8_t)(HRED & 0xFF),
+       (uint8_t)(VRST >> 8),
+       (uint8_t)(VRST & 0xFF),
+       (uint8_t)(VRED >> 8),
+       (uint8_t)(VRED & 0xFF),
+       0x01 // PTLW_ENABLE
+   };
+
+   _writeEN133UF3DataCmd(0x83, data, 9, cs_type);
+   _writeEN133UF3Cmd(0x91, cs_type);
+}
+
+void GxEPD2_1330c_EL133UF3::_clearPartialRamArea(CsType cs_type) {
+   uint8_t data[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+   _writeEN133UF3DataCmd(0x83, data, 9, cs_type);
 }
