@@ -174,8 +174,13 @@ void GxEPD2_1330c_EL133UF3::writeImage(const uint8_t bitmap[], int16_t x, int16_
    } else {
       _paged = false;
       int16_t wb = (w + 1) / 2;  // bytes per line input (2 pix per byte)
-      x -= x % 2;
-      w = 2 * ((w + 1) / 2);
+      w += x % 4;
+      x -= x % 4;
+      w = 4 * ((w + 3) / 4);
+
+      h += y % 2;
+      y -= y % 2;
+      h = 2 * ((h + 1) / 2);
 
       if ((w <= 0) || (h <= 0))
          return;
@@ -254,12 +259,16 @@ void GxEPD2_1330c_EL133UF3::writeImagePart(const uint8_t bitmap[], int16_t x_par
    if ((y_part < 0) || (y_part >= h_bitmap)) return;
    
    int16_t wb_bitmap = (w_bitmap + 1) / 2; // width bytes, bitmaps are padded
-   x_part -= x_part % 2;
+   x_part -= x_part % 4;
    w = w_bitmap - x_part < w ? w_bitmap - x_part : w; // limit
    h = h_bitmap - y_part < h ? h_bitmap - y_part : h; // limit
-   w += x % 2;
-   x -= x % 2;
-   w = 2 * ((w + 1) / 2);
+   w += x % 4;
+   x -= x % 4;
+   w = 4 * ((w + 3) / 4);
+
+   h += y % 2;
+   y -= y % 2;
+   h = 2 * ((h + 1) / 2);
 
    if ((w <= 0) || (h <= 0))
       return;
