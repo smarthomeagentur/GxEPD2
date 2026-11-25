@@ -75,11 +75,11 @@ private:
     const uint8_t AGID_V[1] = {
         0x10};
     const uint8_t BTST_P_V[2] = {
-        0xE8, 0x28};
+        0xD8, 0x18};
     const uint8_t BOOST_VDDP_EN_V[1] = {
         0x01};
     const uint8_t BTST_N_V[2] = {
-        0xE8, 0x28};
+        0xD8, 0x18};
     const uint8_t BUCK_BOOST_VDDN_V[1] = {
         0x01};
     const uint8_t TFT_VCOM_POWER_V[1] = {
@@ -160,7 +160,7 @@ private:
     inline void _pwr(CsType cs_type = CsType::CS_MASTER);
     inline void _pof(CsType cs_type = CsType::CS_MASTER);
     inline void _pon(CsType cs_type = CsType::CS_MASTER);
-    inline void _drf(CsType cs_type = CsType::CS_MASTER);
+    inline void _drf(CsType cs_type = CsType::CS_MASTER, bool dc_vcom = false);
     inline void _cdi(CsType cs_type = CsType::CS_MASTER);
     inline void _tcon(CsType cs_type = CsType::CS_MASTER);
     inline void _tres(CsType cs_type = CsType::CS_MASTER);
