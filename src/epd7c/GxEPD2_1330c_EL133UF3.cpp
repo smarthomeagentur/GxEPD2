@@ -476,7 +476,7 @@ void GxEPD2_1330c_EL133UF3::refresh(bool partial_update_mode) {
        _clearPartialRamArea(CsType::CS_MASTER_SLAVE);
    }
 
-   _drf(CsType::CS_MASTER_SLAVE);
+   _drf(CsType::CS_MASTER_SLAVE, partial_update_mode);
    delay(1);
    if (_epd_quick) {
       delay(_epd_quick_stop_time);  // Time until force stop refresh
@@ -533,7 +533,7 @@ void GxEPD2_1330c_EL133UF3::refresh(int16_t x, int16_t y, int16_t w, int16_t h) 
    }
 
    if (refresh_cs != CsType::CS_NONE) {
-       _drf(refresh_cs);
+       _drf(refresh_cs, true); // DC VCOM (0x01) keeps surrounding colors stable during partial refresh
        delay(1);
        if (_epd_quick) {
           delay(_epd_quick_stop_time);  // Time until force stop refresh
@@ -603,8 +603,9 @@ inline void GxEPD2_1330c_EL133UF3::_pon(CsType cs_type) {
    _writeEN133UF3Cmd(PON, cs_type);
 }
 
-inline void GxEPD2_1330c_EL133UF3::_drf(CsType cs_type) {
-   _writeEN133UF3DataCmd(DRF, DRF_V, sizeof(DRF_V), cs_type);
+inline void GxEPD2_1330c_EL133UF3::_drf(CsType cs_type, bool dc_vcom) {
+   const uint8_t drf_val = dc_vcom ? 0x01 : DRF_V[0];
+   _writeEN133UF3DataCmd(DRF, &drf_val, 1, cs_type);
 }
 
 inline void GxEPD2_1330c_EL133UF3::_cdi(CsType cs_type) {

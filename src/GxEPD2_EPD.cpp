@@ -138,13 +138,30 @@ void GxEPD2_EPD::_waitWhileBusy(const char* comment, uint16_t busy_time)
   {
     delay(1); // add some margin to become active
     unsigned long start = micros();
+    unsigned long not_busy_since = 0;
+    bool not_busy_active = false;
+    const unsigned long debounce_us = 50000UL; // 50ms stable non-busy to ignore glitches
     while (1)
     {
-      if (digitalRead(_busy) != _busy_level) break;
+      if (digitalRead(_busy) != _busy_level)
+      {
+        if (!not_busy_active)
+        {
+          not_busy_since = micros();
+          not_busy_active = true;
+        }
+        else if (micros() - not_busy_since >= debounce_us)
+        {
+          break;
+        }
+      }
+      else
+      {
+        not_busy_active = false;
+      }
       if (_busy_callback) _busy_callback(_busy_callback_parameter);
       else
         delay(1);
-      if (digitalRead(_busy) != _busy_level) break;
       if (micros() - start > _busy_timeout)
       {
         Serial.println("Busy Timeout!");
